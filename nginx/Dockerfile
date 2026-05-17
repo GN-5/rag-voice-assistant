@@ -9,6 +9,7 @@ RUN mkdir -p /etc/nginx/ssl && \
     -subj "/CN=rag-assistant"
 
 COPY nginx.conf /etc/nginx/nginx.conf
+RUN rm -f /etc/nginx/conf.d/default.conf
 
 EXPOSE 443
 
