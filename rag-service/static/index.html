@@ -211,7 +211,7 @@
     // When served via nginx (HTTPS), use wss:// through the proxy.
     // When served directly (HTTP), fall back to direct ws:// connection.
     const LIVEKIT_SERVER_URL = window.location.protocol === "https:"
-      ? `wss://${window.location.host}/rtc`
+      ? `wss://${window.location.hostname}`
       : "ws://100.122.86.75:7880";
     const RAG_BASE = "";
 
