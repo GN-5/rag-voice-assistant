@@ -113,8 +113,9 @@ async def session_handler(ctx: agents.JobContext):
     tts = lk_openai.TTS(
         base_url=KOKORO_BASE_URL,
         api_key="not-required",
-        model="kokoro",
+        model="tts-1",
         voice="af_sky",
+        response_format="pcm",
     )
     logger.info(f"TTS initialized with Kokoro at {KOKORO_BASE_URL}")
     
