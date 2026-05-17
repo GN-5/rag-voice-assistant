@@ -1,0 +1,25 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+python-multipart==0.0.9
+aiofiles==23.2.1
+sse-starlette==2.1.0
+
+# Document processing
+pymupdf==1.24.0
+python-docx==1.1.0
+markdown==3.6
+
+# Embeddings + Vector search
+sentence-transformers==3.0.0
+faiss-cpu==1.7.4
+torch==2.3.0
+
+# Sparse search
+rank-bm25==0.2.2
+
+# Utilities
+numpy==1.26.4
+nltk==3.8.1
+
+# LiveKit (for token generation)
+livekit>=0.11.0

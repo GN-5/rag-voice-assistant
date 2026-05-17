@@ -1,0 +1,92 @@
+version: "3.9"
+
+services:
+
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+    restart: unless-stopped
+
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:latest-gpu
+    ports:
+      - "8000:8000"
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest
+    ports:
+      - "8880:8880"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  rag-service:
+    build: ./rag-service
+    ports:
+      - "8100:8100"
+    environment:
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - RERANKER_MODEL=${RERANKER_MODEL}
+      - TOP_K_RETRIEVE=${TOP_K_RETRIEVE}
+      - TOP_K_RERANK=${TOP_K_RERANK}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+    volumes:
+      - ./rag-service/storage:/app/storage
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    depends_on:
+      - livekit
+
+  agent:
+    build: ./agent
+    environment:
+      - LIVEKIT_URL=${LIVEKIT_URL}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LLAMA_CPP_BASE_URL=${LLAMA_CPP_BASE_URL}
+      - RAG_SERVICE_URL=${RAG_SERVICE_URL}
+      - KOKORO_BASE_URL=${KOKORO_BASE_URL}
+      - AGENT_NAME=${AGENT_NAME}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    depends_on:
+      - livekit
+      - speaches
+      - kokoro
+      - rag-service
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

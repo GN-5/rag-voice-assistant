@@ -1,0 +1,52 @@
+# ── Environment & Secrets ──────────────────────────────────────
+.env
+.env.local
+
+# ── Python ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.egg-info/
+.venv/
+venv/
+
+# ── Docker ─────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Storage (generated at runtime) ─────────────────────────────
+rag-service/storage/documents/
+rag-service/storage/index/
+rag-service/storage/metadata.json
+
+# ── macOS ──────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.XcodeDataState
+*.xcworkspace/
+*.xcodeproj/
+
+# ── IDE ────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Logs ───────────────────────────────────────────────────────
+*.log
+
+# ── OS generated ───────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
