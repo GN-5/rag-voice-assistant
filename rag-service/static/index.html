@@ -208,7 +208,11 @@
   </div>
 
   <script>
-    const LIVEKIT_SERVER_URL = "ws://100.122.86.75:7880";
+    // When served via nginx (HTTPS), use wss:// through the proxy.
+    // When served directly (HTTP), fall back to direct ws:// connection.
+    const LIVEKIT_SERVER_URL = window.location.protocol === "https:"
+      ? `wss://${window.location.host}/rtc`
+      : "ws://100.122.86.75:7880";
     const RAG_BASE = "";
 
     const TOKEN_URL = `${RAG_BASE}/livekit-token`;
