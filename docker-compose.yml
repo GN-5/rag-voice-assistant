@@ -18,9 +18,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - WHISPER_MODEL=${WHISPER_MODEL}
-      - PRELOAD_MODELS=["Systran/faster-whisper-medium"]
-      - ENABLE_UI=false
+      WHISPER_MODEL: ${WHISPER_MODEL}
+      PRELOAD_MODELS: '["Systran/faster-whisper-medium"]'
+      ENABLE_UI: "false"
+    volumes:
+      - hf-cache:/root/.cache/huggingface
     deploy:
       resources:
         reservations:
@@ -101,3 +103,6 @@ services:
       - rag-service
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+volumes:
+  hf-cache:
