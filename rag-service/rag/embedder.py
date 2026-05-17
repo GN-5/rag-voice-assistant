@@ -5,7 +5,7 @@ import numpy as np
 
 class Embedder:
     def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5"):
-        self.model = SentenceTransformer(model_name, device="cuda")
+        self.model = SentenceTransformer(model_name, device="cpu")
         self.model.eval()
         self.dim = self.model.get_sentence_embedding_dimension()
     

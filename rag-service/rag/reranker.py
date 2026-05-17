@@ -4,7 +4,7 @@ from typing import List, Dict
 
 class Reranker:
     def __init__(self, model_name: str = "BAAI/bge-reranker-base"):
-        self.model = CrossEncoder(model_name, device="cuda")
+        self.model = CrossEncoder(model_name, device="cpu")
     
     def rerank(self, query: str, chunks: List[Dict], top_k: int = 5) -> List[Dict]:
         if not chunks:
