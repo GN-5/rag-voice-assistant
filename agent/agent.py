@@ -98,7 +98,7 @@ async def session_handler(ctx: agents.JobContext):
     stt = lk_openai.STT(
         base_url="http://speaches:8000/v1",
         api_key="not-required",
-        model="Systran/faster-whisper-large-v3-turbo",
+        model="deepdml/faster-whisper-large-v3-turbo-ct2",
         language="en",
     )
     logger.info("STT initialized with Systran/faster-whisper-large-v3-turbo")
