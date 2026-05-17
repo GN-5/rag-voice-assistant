@@ -1,12 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RAG Voice Assistant</title>
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #0f0f0f;
@@ -18,8 +26,19 @@
       padding: 2rem;
       gap: 2rem;
     }
-    h1 { font-size: 1.5rem; font-weight: 600; color: #fff; }
-    h2 { font-size: 1rem; font-weight: 500; color: #aaa; margin-bottom: 0.75rem; }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #aaa;
+      margin-bottom: 0.75rem;
+    }
 
     .panel {
       width: 100%;
@@ -46,24 +65,59 @@
       color: #fff;
       transition: background 0.2s;
     }
-    #mic-btn:hover { background: #1d4ed8; }
-    #mic-btn.active { background: #dc2626; }
-    #mic-btn:disabled { background: #444; cursor: not-allowed; }
 
-    #status { font-size: 0.85rem; color: #888; margin-top: 0.5rem; text-align: center; }
+    #mic-btn:hover {
+      background: #1d4ed8;
+    }
 
-    .progress-wrap { margin-top: 0.75rem; }
+    #mic-btn.active {
+      background: #dc2626;
+    }
+
+    #mic-btn:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+
+    #status {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+
+    .progress-wrap {
+      margin-top: 0.75rem;
+    }
+
     progress {
       width: 100%;
       height: 6px;
       border-radius: 3px;
       appearance: none;
     }
-    progress::-webkit-progress-bar { background: #333; border-radius: 3px; }
-    progress::-webkit-progress-value { background: #2563eb; border-radius: 3px; transition: width 0.3s; }
-    #progress-label { font-size: 0.75rem; color: #888; margin-top: 0.25rem; }
 
-    #upload-input { display: none; }
+    progress::-webkit-progress-bar {
+      background: #333;
+      border-radius: 3px;
+    }
+
+    progress::-webkit-progress-value {
+      background: #2563eb;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    #progress-label {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 0.25rem;
+    }
+
+    #upload-input {
+      display: none;
+    }
+
     #upload-btn {
       padding: 0.6rem 1.2rem;
       border-radius: 6px;
@@ -73,9 +127,18 @@
       cursor: pointer;
       font-size: 0.9rem;
     }
-    #upload-btn:hover { background: #2f2f2f; }
 
-    #doc-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    #upload-btn:hover {
+      background: #2f2f2f;
+    }
+
+    #doc-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
     #doc-list li {
       display: flex;
       align-items: center;
@@ -85,6 +148,7 @@
       border-radius: 6px;
       font-size: 0.9rem;
     }
+
     #doc-list li .del-btn {
       background: none;
       border: none;
@@ -93,7 +157,10 @@
       font-size: 0.85rem;
       padding: 0.2rem 0.4rem;
     }
-    #doc-list li .del-btn:hover { text-decoration: underline; }
+
+    #doc-list li .del-btn:hover {
+      text-decoration: underline;
+    }
 
     #transcript {
       background: #111;
@@ -106,223 +173,225 @@
     }
   </style>
 </head>
+
 <body>
 
-<h1>RAG Voice Assistant</h1>
+  <h1>RAG Voice Assistant</h1>
 
-<div class="panel">
-  <h2>Voice</h2>
-  <button id="mic-btn" onclick="toggleSession()" disabled>
-    <span id="mic-icon">&#9654;</span>
-    <span id="mic-label">Connect</span>
-  </button>
-  <div id="status">Initialising...</div>
-</div>
-
-<div class="panel">
-  <h2>Documents</h2>
-  <input type="file" id="upload-input" accept=".pdf,.docx,.txt,.md" onchange="uploadFile(event)">
-  <button id="upload-btn" onclick="document.getElementById('upload-input').click()">
-    + Upload document
-  </button>
-
-  <div class="progress-wrap" id="progress-wrap" style="display:none">
-    <progress id="progress-bar" value="0" max="1"></progress>
-    <div id="progress-label">Indexing...</div>
+  <div class="panel">
+    <h2>Voice</h2>
+    <button id="mic-btn" onclick="toggleSession()" disabled>
+      <span id="mic-icon">&#9654;</span>
+      <span id="mic-label">Connect</span>
+    </button>
+    <div id="status">Initialising...</div>
   </div>
 
-  <ul id="doc-list" style="margin-top: 1rem;"></ul>
-</div>
+  <div class="panel">
+    <h2>Documents</h2>
+    <input type="file" id="upload-input" accept=".pdf,.docx,.txt,.md" onchange="uploadFile(event)">
+    <button id="upload-btn" onclick="document.getElementById('upload-input').click()">
+      + Upload document
+    </button>
 
-<div class="panel">
-  <h2>Last transcript</h2>
-  <div id="transcript">-</div>
-</div>
+    <div class="progress-wrap" id="progress-wrap" style="display:none">
+      <progress id="progress-bar" value="0" max="1"></progress>
+      <div id="progress-label">Indexing...</div>
+    </div>
 
-<script>
-  const LIVEKIT_SERVER_URL = "ws://100.x.x.x:7880";
-  const RAG_BASE = "";
+    <ul id="doc-list" style="margin-top: 1rem;"></ul>
+  </div>
 
-  const TOKEN_URL = `${RAG_BASE}/livekit-token`;
+  <div class="panel">
+    <h2>Last transcript</h2>
+    <div id="transcript">-</div>
+  </div>
 
-  let room = null;
-  let isConnected = false;
-  let isIndexing = false;
+  <script>
+    const LIVEKIT_SERVER_URL = "ws://100.122.86.75:7880";
+    const RAG_BASE = "";
 
-  window.addEventListener("DOMContentLoaded", async () => {
-    await loadDocuments();
-    watchIndexingProgress();
-    document.getElementById("mic-btn").disabled = false;
-    setStatus("Ready");
-  });
+    const TOKEN_URL = `${RAG_BASE}/livekit-token`;
 
-  async function toggleSession() {
-    if (isConnected) {
-      await disconnectSession();
-    } else {
-      await connectSession();
+    let room = null;
+    let isConnected = false;
+    let isIndexing = false;
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadDocuments();
+      watchIndexingProgress();
+      document.getElementById("mic-btn").disabled = false;
+      setStatus("Ready");
+    });
+
+    async function toggleSession() {
+      if (isConnected) {
+        await disconnectSession();
+      } else {
+        await connectSession();
+      }
     }
-  }
 
-  async function connectSession() {
-    if (isIndexing) {
-      setStatus("Please wait for indexing to complete.");
-      return;
-    }
-    try {
-      setStatus("Fetching token...");
-      const res = await fetch(TOKEN_URL);
-      const { token } = await res.json();
+    async function connectSession() {
+      if (isIndexing) {
+        setStatus("Please wait for indexing to complete.");
+        return;
+      }
+      try {
+        setStatus("Fetching token...");
+        const res = await fetch(TOKEN_URL);
+        const { token } = await res.json();
 
-      room = new LivekitClient.Room();
+        room = new LivekitClient.Room();
 
-      room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
-        if (track.kind === LivekitClient.Track.Kind.Audio) {
-          const el = track.attach();
-          document.body.appendChild(el);
-        }
-      });
-
-      room.on(LivekitClient.RoomEvent.DataReceived, (payload) => {
-        try {
-          const msg = JSON.parse(new TextDecoder().decode(payload));
-          if (msg.type === "transcript") {
-            document.getElementById("transcript").textContent = msg.text;
+        room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
+          if (track.kind === LivekitClient.Track.Kind.Audio) {
+            const el = track.attach();
+            document.body.appendChild(el);
           }
-        } catch (_) {}
-      });
+        });
 
-      await room.connect(LIVEKIT_SERVER_URL, token);
-      await room.localParticipant.setMicrophoneEnabled(true);
+        room.on(LivekitClient.RoomEvent.DataReceived, (payload) => {
+          try {
+            const msg = JSON.parse(new TextDecoder().decode(payload));
+            if (msg.type === "transcript") {
+              document.getElementById("transcript").textContent = msg.text;
+            }
+          } catch (_) { }
+        });
 
-      isConnected = true;
-      updateMicButton(true);
-      setStatus("Connected - speak now");
-    } catch (err) {
-      console.error("Connection error:", err);
-      setStatus("Connection failed: " + err.message);
+        await room.connect(LIVEKIT_SERVER_URL, token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+
+        isConnected = true;
+        updateMicButton(true);
+        setStatus("Connected - speak now");
+      } catch (err) {
+        console.error("Connection error:", err);
+        setStatus("Connection failed: " + err.message);
+      }
     }
-  }
 
-  async function disconnectSession() {
-    if (room) {
-      await room.disconnect();
-      room = null;
+    async function disconnectSession() {
+      if (room) {
+        await room.disconnect();
+        room = null;
+      }
+      document.querySelectorAll("audio").forEach(el => el.remove());
+      isConnected = false;
+      updateMicButton(false);
+      setStatus("Disconnected");
     }
-    document.querySelectorAll("audio").forEach(el => el.remove());
-    isConnected = false;
-    updateMicButton(false);
-    setStatus("Disconnected");
-  }
 
-  function updateMicButton(connected) {
-    const btn = document.getElementById("mic-btn");
-    const icon = document.getElementById("mic-icon");
-    const label = document.getElementById("mic-label");
-    btn.classList.toggle("active", connected);
-    icon.textContent = connected ? "\u25A0" : "\u25B6";
-    label.textContent = connected ? "Disconnect" : "Connect";
-  }
-
-  function setStatus(msg) {
-    document.getElementById("status").textContent = msg;
-  }
-
-  async function loadDocuments() {
-    const res = await fetch(`${RAG_BASE}/documents`);
-    const data = await res.json();
-    renderDocumentList(data.documents || []);
-  }
-
-  function renderDocumentList(docs) {
-    const list = document.getElementById("doc-list");
-    list.innerHTML = "";
-    if (docs.length === 0) {
-      list.innerHTML = "<li style='color:#666'>No documents indexed yet</li>";
-      return;
+    function updateMicButton(connected) {
+      const btn = document.getElementById("mic-btn");
+      const icon = document.getElementById("mic-icon");
+      const label = document.getElementById("mic-label");
+      btn.classList.toggle("active", connected);
+      icon.textContent = connected ? "\u25A0" : "\u25B6";
+      label.textContent = connected ? "Disconnect" : "Connect";
     }
-    docs.forEach(doc => {
-      const li = document.createElement("li");
-      const size = (doc.size_bytes / 1024).toFixed(1) + " KB";
-      li.innerHTML = `
+
+    function setStatus(msg) {
+      document.getElementById("status").textContent = msg;
+    }
+
+    async function loadDocuments() {
+      const res = await fetch(`${RAG_BASE}/documents`);
+      const data = await res.json();
+      renderDocumentList(data.documents || []);
+    }
+
+    function renderDocumentList(docs) {
+      const list = document.getElementById("doc-list");
+      list.innerHTML = "";
+      if (docs.length === 0) {
+        list.innerHTML = "<li style='color:#666'>No documents indexed yet</li>";
+        return;
+      }
+      docs.forEach(doc => {
+        const li = document.createElement("li");
+        const size = (doc.size_bytes / 1024).toFixed(1) + " KB";
+        li.innerHTML = `
         <span>${doc.filename} <span style="color:#666;font-size:0.8em">${size}</span></span>
         <button class="del-btn" onclick="deleteDocument('${doc.filename}')">Delete</button>
       `;
-      list.appendChild(li);
-    });
-  }
-
-  async function uploadFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    event.target.value = "";
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    setIndexingUI(true, 0, "uploading");
-    try {
-      const res = await fetch(`${RAG_BASE}/upload`, {
-        method: "POST",
-        body: formData,
+        list.appendChild(li);
       });
-      if (!res.ok) {
-        const err = await res.json();
-        alert("Upload failed: " + err.detail);
+    }
+
+    async function uploadFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      event.target.value = "";
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      setIndexingUI(true, 0, "uploading");
+      try {
+        const res = await fetch(`${RAG_BASE}/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert("Upload failed: " + err.detail);
+          setIndexingUI(false);
+        }
+      } catch (err) {
+        alert("Upload error: " + err.message);
         setIndexingUI(false);
       }
-    } catch (err) {
-      alert("Upload error: " + err.message);
-      setIndexingUI(false);
     }
-  }
 
-  async function deleteDocument(filename) {
-    if (!confirm(`Delete "${filename}" from the index?`)) return;
-    const res = await fetch(`${RAG_BASE}/documents/${encodeURIComponent(filename)}`, {
-      method: "DELETE",
-    });
-    if (res.ok) {
-      await loadDocuments();
-    } else {
-      alert("Delete failed");
-    }
-  }
-
-  function watchIndexingProgress() {
-    const es = new EventSource(`${RAG_BASE}/index-progress`);
-    es.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      const progress = parseFloat(data.progress);
-      const stage = data.stage || "";
-
-      if (progress >= 1.0) {
-        setIndexingUI(false);
-        loadDocuments();
-        es.close();
-        setTimeout(watchIndexingProgress, 1000);
+    async function deleteDocument(filename) {
+      if (!confirm(`Delete "${filename}" from the index?`)) return;
+      const res = await fetch(`${RAG_BASE}/documents/${encodeURIComponent(filename)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await loadDocuments();
       } else {
-        setIndexingUI(true, progress, stage);
+        alert("Delete failed");
       }
-    };
-    es.onerror = () => {
-      setTimeout(watchIndexingProgress, 3000);
-    };
-  }
+    }
 
-  function setIndexingUI(active, progress = 0, stage = "") {
-    isIndexing = active;
-    const wrap = document.getElementById("progress-wrap");
-    const bar = document.getElementById("progress-bar");
-    const label = document.getElementById("progress-label");
-    const micBtn = document.getElementById("mic-btn");
+    function watchIndexingProgress() {
+      const es = new EventSource(`${RAG_BASE}/index-progress`);
+      es.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const progress = parseFloat(data.progress);
+        const stage = data.stage || "";
 
-    wrap.style.display = active ? "block" : "none";
-    bar.value = progress;
-    label.textContent = active ? `${stage.replace(/_/g, " ")} (${Math.round(progress * 100)}%)` : "";
+        if (progress >= 1.0) {
+          setIndexingUI(false);
+          loadDocuments();
+          es.close();
+          setTimeout(watchIndexingProgress, 1000);
+        } else {
+          setIndexingUI(true, progress, stage);
+        }
+      };
+      es.onerror = () => {
+        setTimeout(watchIndexingProgress, 3000);
+      };
+    }
 
-    micBtn.disabled = active && !isConnected;
-  }
-</script>
+    function setIndexingUI(active, progress = 0, stage = "") {
+      isIndexing = active;
+      const wrap = document.getElementById("progress-wrap");
+      const bar = document.getElementById("progress-bar");
+      const label = document.getElementById("progress-label");
+      const micBtn = document.getElementById("mic-btn");
+
+      wrap.style.display = active ? "block" : "none";
+      bar.value = progress;
+      label.textContent = active ? `${stage.replace(/_/g, " ")} (${Math.round(progress * 100)}%)` : "";
+
+      micBtn.disabled = active && !isConnected;
+    }
+  </script>
 </body>
+
 </html>
