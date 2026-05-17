@@ -101,7 +101,7 @@ async def session_handler(ctx: agents.JobContext):
         model="Systran/faster-whisper-medium",
         language="en",
     )
-    logger.info("STT initialized with Systran/faster-whisper-large-v3-turbo")
+    logger.info("STT initialized with Systran/faster-whisper-medium")
     
     llm_model = lk_openai.LLM(
         base_url=LLAMA_CPP_BASE_URL,
