@@ -3,6 +3,8 @@ services:
   livekit:
     image: livekit/livekit-server:latest
     command: --config /etc/livekit.yaml
+    environment:
+      - NODE_IP=${NODE_IP}
     ports:
       - "7880:7880"
       - "7881:7881"
