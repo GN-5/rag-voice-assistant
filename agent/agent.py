@@ -78,7 +78,7 @@ class RAGAssistant(Agent):
 server = AgentServer()
 
 
-@server.rtc_session(agent_name=AGENT_NAME)
+@server.rtc_session()
 async def session_handler(ctx: agents.JobContext):
     logger.info(f"New session in room: {ctx.room.name}")
     
