@@ -19,7 +19,7 @@ services:
       - "8000:8000"
     environment:
       - WHISPER_MODEL=${WHISPER_MODEL}
-      - PRELOAD_MODELS=["deepdml/faster-whisper-large-v3-turbo-ct2"]
+      - PRELOAD_MODELS=["Systran/faster-whisper-medium"]
       - ENABLE_UI=false
     deploy:
       resources:
