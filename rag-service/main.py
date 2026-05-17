@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
-from livekit import api as livekit_api
+from livekit.api import AccessToken, VideoGrants
 
 from rag.embedder import Embedder
 from rag.reranker import Reranker
@@ -126,7 +126,6 @@ async def upload_document(file: UploadFile = File(...)):
     }
     save_metadata(meta)
     
-    from fastapi import BackgroundTasks
     # Trigger indexing with progress tracking
     asyncio.create_task(index_document_task(file.filename, dest_path, meta))
     return {"status": "uploaded", "filename": file.filename}
@@ -167,10 +166,10 @@ async def retrieve(request: RetrieveRequest):
 
 @app.get("/livekit-token")
 async def get_livekit_token():
-    token = livekit_api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET) \
+    token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET) \
         .with_identity("user-" + str(int(time.time()))) \
         .with_name("User") \
-        .with_grants(livekit_api.VideoGrants(
+        .with_grants(VideoGrants(
             room_join=True,
             room="demo-room",
         ))

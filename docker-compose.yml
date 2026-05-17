@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   livekit:
@@ -14,7 +12,7 @@ services:
     restart: unless-stopped
 
   speaches:
-    image: ghcr.io/speaches-ai/speaches:latest-gpu
+    image: ghcr.io/speaches-ai/speaches:latest-cuda
     ports:
       - "8000:8000"
     environment:

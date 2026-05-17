@@ -1,9 +1,9 @@
-import asyncio
 import logging
 import os
+import time
 import httpx
 from livekit import agents
-from livekit.agents import AgentServer, AgentSession, Agent, ChatContext, ChatMessage
+from livekit.agents import AgentServer, AgentSession, Agent, llm
 from livekit.plugins import openai as lk_openai, silero
 
 logging.basicConfig(level=logging.INFO)
@@ -32,8 +32,8 @@ class RAGAssistant(Agent):
     
     async def on_user_turn_completed(
         self,
-        turn_ctx: ChatContext,
-        new_message: ChatMessage,
+        turn_ctx: llm.ChatContext,
+        new_message: llm.ChatMessage,
     ) -> None:
         query = new_message.text_content
         if not query:
@@ -56,7 +56,15 @@ class RAGAssistant(Agent):
                     f"The following context was retrieved from the user's documents "
                     f"and is relevant to their question:\n\n{context_text}{source_note}"
                 )
-                turn_ctx.add_message(role="assistant", content=injection)
+                # Workaround for livekit-agents timestamp bug:
+                # Without created_at < new_message.created_at, the injected message
+                # lands AFTER the user message in the final chat context sent to the LLM.
+                # See: https://github.com/livekit/agents/issues/5053
+                turn_ctx.add_message(
+                    role="assistant",
+                    content=injection,
+                    created_at=new_message.created_at - 0.001,
+                )
                 logger.info(f"Injected {len(chunks)} RAG chunks from {sources}")
             else:
                 logger.info("RAG returned no chunks for query")
@@ -81,7 +89,7 @@ async def session_handler(ctx: agents.JobContext):
         language="en",
     )
     
-    llm = lk_openai.LLM(
+    llm_model = lk_openai.LLM(
         base_url=LLAMA_CPP_BASE_URL,
         api_key="not-required",
         model="gemma",
@@ -98,7 +106,7 @@ async def session_handler(ctx: agents.JobContext):
     
     session = AgentSession(
         stt=stt,
-        llm=llm,
+        llm=llm_model,
         tts=tts,
         vad=vad,
     )
