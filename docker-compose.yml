@@ -14,7 +14,9 @@ services:
     restart: unless-stopped
 
   speaches:
-    image: ghcr.io/speaches-ai/speaches:latest-cuda
+    build:
+      context: .
+      dockerfile: speaches/Dockerfile
     ports:
       - "8000:8000"
     environment:
