@@ -171,6 +171,18 @@
       min-height: 60px;
       white-space: pre-wrap;
     }
+
+    #state-indicator {
+      font-size: 0.75rem;
+      color: #555;
+      text-align: center;
+      margin-top: 0.5rem;
+      min-height: 1.2em;
+    }
+
+    #state-indicator.listening { color: #22c55e; }
+    #state-indicator.thinking { color: #f59e0b; }
+    #state-indicator.speaking { color: #3b82f6; }
   </style>
 </head>
 
@@ -205,6 +217,7 @@
   <div class="panel">
     <h2>Last transcript</h2>
     <div id="transcript">-</div>
+    <div id="state-indicator"></div>
   </div>
 
   <script>
@@ -243,8 +256,10 @@
       }
       try {
         setStatus("Fetching token...");
+        console.log("[LiveKit] Fetching token from:", TOKEN_URL);
         const res = await fetch(TOKEN_URL);
         const { token } = await res.json();
+        console.log("[LiveKit] Token received");
 
         room = new LivekitClient.Room();
 
@@ -255,23 +270,57 @@
           }
         });
 
-        room.on(LivekitClient.RoomEvent.DataReceived, (payload) => {
+        room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
+          if (track.kind === LivekitClient.Track.Kind.Audio) {
+            const el = track.attach();
+            document.body.appendChild(el);
+          }
+        });
+
+        room.on(LivekitClient.RoomEvent.DataReceived, (payload, participant, topic) => {
           try {
             const msg = JSON.parse(new TextDecoder().decode(payload));
+            console.log("[LiveKit] Data received:", msg);
             if (msg.type === "transcript") {
               document.getElementById("transcript").textContent = msg.text;
+              console.log("[Transcript]", msg.text);
+            } else if (msg.type === "state") {
+              setState(msg.state);
+              console.log("[State]", msg.state);
             }
-          } catch (_) { }
+          } catch (e) {
+            console.warn("[LiveKit] Failed to parse data:", e);
+          }
+        });
+
+        room.on(LivekitClient.RoomEvent.Disconnected, (reason) => {
+          console.log("[LiveKit] Disconnected:", reason);
+          isConnected = false;
+          updateMicButton(false);
+          setStatus("Disconnected");
+          setState("");
+        });
+
+        room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
+          const isAgentSpeaking = speakers.some(s => s.identity && s.identity.includes("agent"));
+          if (isAgentSpeaking) {
+            setState("speaking");
+          } else if (document.getElementById("state-indicator").textContent === "speaking") {
+            setState("listening");
+          }
         });
 
         await room.connect(LIVEKIT_SERVER_URL, token);
+        console.log("[LiveKit] Connected to room:", room.name);
         await room.localParticipant.setMicrophoneEnabled(true);
+        console.log("[LiveKit] Microphone enabled");
 
         isConnected = true;
         updateMicButton(true);
         setStatus("Connected - speak now");
+        setState("listening");
       } catch (err) {
-        console.error("Connection error:", err);
+        console.error("[LiveKit] Connection error:", err);
         setStatus("Connection failed: " + err.message);
       }
     }
@@ -279,12 +328,14 @@
     async function disconnectSession() {
       if (room) {
         await room.disconnect();
+        console.log("[LiveKit] Room disconnected");
         room = null;
       }
       document.querySelectorAll("audio").forEach(el => el.remove());
       isConnected = false;
       updateMicButton(false);
       setStatus("Disconnected");
+      setState("");
     }
 
     function updateMicButton(connected) {
@@ -298,6 +349,17 @@
 
     function setStatus(msg) {
       document.getElementById("status").textContent = msg;
+    }
+
+    function setState(state) {
+      const el = document.getElementById("state-indicator");
+      el.className = state;
+      const labels = {
+        listening: "Listening...",
+        thinking: "Thinking...",
+        speaking: "Speaking...",
+      };
+      el.textContent = labels[state] || "";
     }
 
     async function loadDocuments() {

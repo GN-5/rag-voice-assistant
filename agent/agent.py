@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import time
@@ -26,9 +27,18 @@ If you cannot find the answer in the provided context, say so clearly and briefl
 
 
 class RAGAssistant(Agent):
-    def __init__(self) -> None:
+    def __init__(self, room=None) -> None:
         super().__init__(instructions=SYSTEM_PROMPT)
         self._http_client = httpx.AsyncClient(timeout=5.0)
+        self._room = room
+    
+    async def _broadcast(self, msg_type: str, **kwargs):
+        if not self._room:
+            return
+        payload = {"type": msg_type, **kwargs}
+        await self._room.local_participant.publish_data(
+            json.dumps(payload).encode(),
+        )
     
     async def on_user_turn_completed(
         self,
@@ -38,6 +48,9 @@ class RAGAssistant(Agent):
         query = new_message.text_content
         if not query:
             return
+        
+        await self._broadcast("transcript", text=query)
+        await self._broadcast("state", state="thinking")
         
         try:
             response = await self._http_client.post(
@@ -85,15 +98,17 @@ async def session_handler(ctx: agents.JobContext):
     stt = lk_openai.STT(
         base_url="http://speaches:8000/v1",
         api_key="not-required",
-        model="deepdml/faster-whisper-large-v3-turbo-ct2",
+        model="Systran/faster-whisper-large-v3-turbo",
         language="en",
     )
+    logger.info("STT initialized with Systran/faster-whisper-large-v3-turbo")
     
     llm_model = lk_openai.LLM(
         base_url=LLAMA_CPP_BASE_URL,
         api_key="not-required",
         model="gemma",
     )
+    logger.info(f"LLM initialized with llama.cpp at {LLAMA_CPP_BASE_URL}")
     
     tts = lk_openai.TTS(
         base_url=KOKORO_BASE_URL,
@@ -101,6 +116,7 @@ async def session_handler(ctx: agents.JobContext):
         model="kokoro",
         voice="af_sky",
     )
+    logger.info(f"TTS initialized with Kokoro at {KOKORO_BASE_URL}")
     
     vad = silero.VAD.load()
     
@@ -113,12 +129,14 @@ async def session_handler(ctx: agents.JobContext):
     
     await session.start(
         room=ctx.room,
-        agent=RAGAssistant(),
+        agent=RAGAssistant(room=ctx.room),
     )
+    logger.info("AgentSession started")
     
     await session.generate_reply(
         instructions="Greet the user warmly and briefly. Tell them you're ready to answer questions about their documents."
     )
+    logger.info("Greeting generated")
 
 
 if __name__ == "__main__":
