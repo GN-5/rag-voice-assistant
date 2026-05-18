@@ -23,7 +23,7 @@ services:
       WHISPER_MODEL: ${WHISPER_MODEL}
       ENABLE_UI: "false"
       PRELOAD_MODELS: '["Systran/faster-whisper-medium"]'
-      WHISPER_TTL: "-1"
+      WHISPER__TTL: "-1"
     volumes:
       - hf-cache:/root/.cache/huggingface
     deploy:
