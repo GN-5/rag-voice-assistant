@@ -271,6 +271,7 @@
     let isIndexing = false;
     let isMuted = false;
     let isAutoMuted = false;
+    let localAudioTrack = null;
 
     window.addEventListener("DOMContentLoaded", async () => {
       await loadDocuments();
@@ -345,7 +346,8 @@
         await room.connect(LIVEKIT_SERVER_URL, token);
         console.log("[LiveKit] Connected to room:", room.name);
         await room.localParticipant.setMicrophoneEnabled(true);
-        console.log("[LiveKit] Microphone enabled");
+        localAudioTrack = room.localParticipant.audioTrackPublications.values().next().value?.track;
+        console.log("[LiveKit] Microphone enabled, track:", localAudioTrack ? "captured" : "not found");
 
         isConnected = true;
         updateMicButton(true);
@@ -364,6 +366,7 @@
         console.log("[LiveKit] Room disconnected");
         room = null;
       }
+      localAudioTrack = null;
       document.querySelectorAll("audio").forEach(el => el.remove());
       isConnected = false;
       isMuted = false;
@@ -409,9 +412,13 @@
     }
 
     async function setMicMuted(muted) {
-      if (!room || !room.localParticipant) return;
+      if (!localAudioTrack) return;
       try {
-        await room.localParticipant.setMicrophoneEnabled(!muted);
+        if (muted) {
+          await localAudioTrack.mute();
+        } else {
+          await localAudioTrack.unmute();
+        }
         console.log("[LiveKit] Microphone", muted ? "muted" : "unmuted");
         updateMuteButton();
       } catch (err) {
