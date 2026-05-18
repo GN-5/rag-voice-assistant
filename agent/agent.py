@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+import asyncio
 import httpx
 from livekit import agents
 from livekit.agents import AgentServer, AgentSession, Agent, llm
@@ -69,10 +70,6 @@ class RAGAssistant(Agent):
                     f"The following context was retrieved from the user's documents "
                     f"and is relevant to their question:\n\n{context_text}{source_note}"
                 )
-                # Workaround for livekit-agents timestamp bug:
-                # Without created_at < new_message.created_at, the injected message
-                # lands AFTER the user message in the final chat context sent to the LLM.
-                # See: https://github.com/livekit/agents/issues/5053
                 turn_ctx.add_message(
                     role="assistant",
                     content=injection,
@@ -86,6 +83,14 @@ class RAGAssistant(Agent):
             logger.warning(f"RAG service unreachable: {e}. Proceeding without context.")
         except Exception as e:
             logger.error(f"RAG retrieval error: {e}. Proceeding without context.")
+    
+    async def run(self, llm, chat_ctx):
+        await self._broadcast("state", state="speaking")
+        try:
+            async for chunk in await super().run(llm, chat_ctx):
+                yield chunk
+        finally:
+            await self._broadcast("state", state="listening")
 
 
 server = AgentServer()

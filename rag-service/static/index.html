@@ -301,15 +301,6 @@
           setState("");
         });
 
-        room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
-          const isAgentSpeaking = speakers.some(s => s.identity && s.identity.includes("agent"));
-          if (isAgentSpeaking) {
-            setState("speaking");
-          } else if (document.getElementById("state-indicator").textContent === "speaking") {
-            setState("listening");
-          }
-        });
-
         await room.connect(LIVEKIT_SERVER_URL, token);
         console.log("[LiveKit] Connected to room:", room.name);
         await room.localParticipant.setMicrophoneEnabled(true);
