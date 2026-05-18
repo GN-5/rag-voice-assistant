@@ -503,9 +503,15 @@
       }
     }
 
+    let indexingES = null;
+
     function watchIndexingProgress() {
-      const es = new EventSource(`${RAG_BASE}/index-progress`);
-      es.onmessage = (event) => {
+      if (indexingES) {
+        indexingES.close();
+        indexingES = null;
+      }
+      indexingES = new EventSource(`${RAG_BASE}/index-progress`);
+      indexingES.onmessage = (event) => {
         const data = JSON.parse(event.data);
         const progress = parseFloat(data.progress);
         const stage = data.stage || "";
@@ -513,14 +519,19 @@
         if (progress >= 1.0) {
           setIndexingUI(false);
           loadDocuments();
-          es.close();
-          setTimeout(watchIndexingProgress, 1000);
+          indexingES.close();
+          indexingES = null;
+          setTimeout(watchIndexingProgress, 2000);
         } else {
           setIndexingUI(true, progress, stage);
         }
       };
-      es.onerror = () => {
-        setTimeout(watchIndexingProgress, 3000);
+      indexingES.onerror = () => {
+        if (indexingES) {
+          indexingES.close();
+          indexingES = null;
+        }
+        setTimeout(watchIndexingProgress, 5000);
       };
     }
 
