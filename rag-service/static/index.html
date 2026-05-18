@@ -79,6 +79,38 @@
       cursor: not-allowed;
     }
 
+    #mute-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #3a3a3a;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: #222;
+      color: #e8e8e8;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    #mute-btn:hover {
+      background: #2f2f2f;
+    }
+
+    #mute-btn.muted {
+      background: #7f1d1d;
+      border-color: #991b1b;
+    }
+
+    #mute-btn.auto-muted {
+      background: #78350f;
+      border-color: #92400e;
+    }
+
     #status {
       font-size: 0.85rem;
       color: #888;
@@ -196,6 +228,10 @@
       <span id="mic-icon">&#9654;</span>
       <span id="mic-label">Connect</span>
     </button>
+    <button id="mute-btn" onclick="toggleMute()">
+      <span id="mute-icon">&#9744;</span>
+      <span id="mute-label">Mute mic</span>
+    </button>
     <div id="status">Initialising...</div>
   </div>
 
@@ -233,6 +269,8 @@
     let room = null;
     let isConnected = false;
     let isIndexing = false;
+    let isMuted = false;
+    let isAutoMuted = false;
 
     window.addEventListener("DOMContentLoaded", async () => {
       await loadDocuments();
@@ -296,7 +334,10 @@
         room.on(LivekitClient.RoomEvent.Disconnected, (reason) => {
           console.log("[LiveKit] Disconnected:", reason);
           isConnected = false;
+          isMuted = false;
+          isAutoMuted = false;
           updateMicButton(false);
+          updateMuteButton();
           setStatus("Disconnected");
           setState("");
         });
@@ -308,6 +349,7 @@
 
         isConnected = true;
         updateMicButton(true);
+        updateMuteButton();
         setStatus("Connected - speak now");
         setState("listening");
       } catch (err) {
@@ -324,7 +366,10 @@
       }
       document.querySelectorAll("audio").forEach(el => el.remove());
       isConnected = false;
+      isMuted = false;
+      isAutoMuted = false;
       updateMicButton(false);
+      updateMuteButton();
       setStatus("Disconnected");
       setState("");
     }
@@ -351,6 +396,43 @@
         speaking: "Speaking...",
       };
       el.textContent = labels[state] || "";
+
+      if (state === "speaking" && !isMuted) {
+        isAutoMuted = true;
+        setMicMuted(true);
+      } else if (state === "listening" && isAutoMuted && !isMuted) {
+        isAutoMuted = false;
+        setMicMuted(false);
+      } else if (state !== "speaking") {
+        isAutoMuted = false;
+      }
+    }
+
+    async function setMicMuted(muted) {
+      if (!room || !room.localParticipant) return;
+      try {
+        await room.localParticipant.setMicrophoneEnabled(!muted);
+        console.log("[LiveKit] Microphone", muted ? "muted" : "unmuted");
+        updateMuteButton();
+      } catch (err) {
+        console.error("[LiveKit] Failed to toggle mic:", err);
+      }
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      isAutoMuted = false;
+      setMicMuted(isMuted);
+    }
+
+    function updateMuteButton() {
+      const btn = document.getElementById("mute-btn");
+      const icon = document.getElementById("mute-icon");
+      const label = document.getElementById("mute-label");
+      btn.style.display = isConnected ? "flex" : "none";
+      btn.className = isMuted ? "muted" : (isAutoMuted ? "auto-muted" : "");
+      icon.textContent = (isMuted || isAutoMuted) ? "\uD83C\uDF99\uFE0F\u2716" : "\uD83C\uDF99\uFE0F";
+      label.textContent = (isMuted || isAutoMuted) ? "Unmute mic" : "Mute mic";
     }
 
     async function loadDocuments() {
