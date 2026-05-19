@@ -28,11 +28,13 @@ If you cannot find the answer in the provided context, say so clearly and briefl
 
 
 class RAGAssistant(Agent):
-    def __init__(self, room=None) -> None:
+    def __init__(self, room=None, session=None) -> None:
         super().__init__(instructions=SYSTEM_PROMPT)
         self._http_client = httpx.AsyncClient(timeout=5.0)
         self._room = room
+        self._session = session
         self._pending_text = ""
+        self._speaking_broadcast = False
     
     async def _broadcast(self, msg_type: str, **kwargs):
         if not self._room:
@@ -85,29 +87,11 @@ class RAGAssistant(Agent):
         except Exception as e:
             logger.error(f"RAG retrieval error: {e}. Proceeding without context.")
     
-    async def run(self, llm, chat_ctx):
-        self._pending_text = ""
-        first_chunk = True
-        
-        try:
-            async for chunk in super().run(llm, chat_ctx):
-                if first_chunk:
-                    await self._broadcast("state", state="speaking")
-                    first_chunk = False
-                
-                if hasattr(chunk, 'delta') and chunk.delta:
-                    self._pending_text += chunk.delta
-                
-                yield chunk
-            
-            full_text = self._pending_text.strip()
-            await self._broadcast("assistant_text", text=full_text)
-            await self._broadcast("state", state="listening")
-            logger.info(f"Agent turn complete. Text length: {len(full_text)}")
-        
-        except Exception as e:
-            logger.error(f"run() error: {e}", exc_info=True)
-            raise
+    async def on_agent_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage):
+        self._pending_text = new_message.text_content or ""
+        await self._broadcast("assistant_text", text=self._pending_text)
+        await self._broadcast("state", state="listening")
+        logger.info(f"Agent turn complete. Text length: {len(self._pending_text)}")
 
 
 server = AgentServer()
@@ -143,6 +127,8 @@ async def session_handler(ctx: agents.JobContext):
     
     vad = silero.VAD.load()
     
+    agent = RAGAssistant(room=ctx.room)
+    
     session = AgentSession(
         stt=stt,
         llm=llm_model,
@@ -150,9 +136,13 @@ async def session_handler(ctx: agents.JobContext):
         vad=vad,
     )
     
+    agent._session = session
+    
+    ctx.room.on("track_subscribed", lambda track, publication, participant: _on_track_subscribed(track, participant, agent))
+    
     await session.start(
         room=ctx.room,
-        agent=RAGAssistant(room=ctx.room),
+        agent=agent,
     )
     logger.info("AgentSession started")
     
@@ -160,6 +150,14 @@ async def session_handler(ctx: agents.JobContext):
         instructions="Greet the user warmly and briefly. Tell them you're ready to answer questions about their documents."
     )
     logger.info("Greeting generated")
+
+
+async def _on_track_subscribed(track, participant, agent):
+    if track.kind == "audio" and participant.identity and "agent" in participant.identity.lower():
+        if not agent._speaking_broadcast:
+            agent._speaking_broadcast = True
+            await agent._broadcast("state", state="speaking")
+            logger.info("Agent audio track subscribed - broadcasting speaking")
 
 
 if __name__ == "__main__":
