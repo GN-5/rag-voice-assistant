@@ -1,270 +1,372 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RAG Voice Assistant</title>
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <style>
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #0f0f0f;
       color: #e8e8e8;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #main-area {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 2rem;
-      gap: 2rem;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
     }
 
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    h2 {
-      font-size: 1rem;
-      font-weight: 500;
-      color: #aaa;
-      margin-bottom: 0.75rem;
-    }
-
-    .panel {
-      width: 100%;
-      max-width: 640px;
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
-      padding: 1.5rem;
-    }
-
-    #mic-btn {
+    #soundwave-container {
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 1.2vw;
+      height: 40vh;
+      transition: opacity 0.3s;
+    }
+
+    .wave-bar {
+      width: 3vw;
+      min-width: 24px;
+      max-width: 48px;
+      height: 20vh;
+      background: #fff;
+      border-radius: 2vw;
+      transition: transform 0.15s ease;
+    }
+
+    #soundwave-container.listening .wave-bar {
+      animation: idleWave 2s ease-in-out infinite;
+    }
+    #soundwave-container.listening .wave-bar:nth-child(1) { animation-delay: 0s; }
+    #soundwave-container.listening .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+    #soundwave-container.listening .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+    #soundwave-container.listening .wave-bar:nth-child(4) { animation-delay: 0.45s; }
+    #soundwave-container.listening .wave-bar:nth-child(5) { animation-delay: 0.6s; }
+    #soundwave-container.listening .wave-bar:nth-child(6) { animation-delay: 0.75s; }
+    #soundwave-container.listening .wave-bar:nth-child(7) { animation-delay: 0.9s; }
+
+    @keyframes idleWave {
+      0%, 100% { transform: scaleY(0.35); }
+      50% { transform: scaleY(0.65); }
+    }
+
+    #soundwave-container.thinking .wave-bar {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scaleY(0.4); }
+      50% { transform: scaleY(0.85); }
+    }
+
+    #soundwave-container.speaking .wave-bar {
+      animation: speakActive 0.8s ease-in-out infinite;
+    }
+    #soundwave-container.speaking .wave-bar:nth-child(1) { animation-delay: 0.00s; animation-duration: 0.7s; }
+    #soundwave-container.speaking .wave-bar:nth-child(2) { animation-delay: 0.12s; animation-duration: 0.85s; }
+    #soundwave-container.speaking .wave-bar:nth-child(3) { animation-delay: 0.05s; animation-duration: 0.65s; }
+    #soundwave-container.speaking .wave-bar:nth-child(4) { animation-delay: 0.18s; animation-duration: 0.9s; }
+    #soundwave-container.speaking .wave-bar:nth-child(5) { animation-delay: 0.08s; animation-duration: 0.75s; }
+    #soundwave-container.speaking .wave-bar:nth-child(6) { animation-delay: 0.22s; animation-duration: 0.8s; }
+    #soundwave-container.speaking .wave-bar:nth-child(7) { animation-delay: 0.03s; animation-duration: 0.72s; }
+
+    @keyframes speakActive {
+      0% { transform: scaleY(0.2); }
+      25% { transform: scaleY(0.95); }
+      50% { transform: scaleY(0.4); }
+      75% { transform: scaleY(1.0); }
+      100% { transform: scaleY(0.3); }
+    }
+
+    #chat-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 80px;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      scroll-behavior: smooth;
+      transition: opacity 0.3s;
+    }
+
+    .bubble {
+      max-width: 70%;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+
+    .bubble.user {
+      align-self: flex-end;
+      background: #2563eb;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble.assistant {
+      align-self: flex-start;
+      background: #2a2a2a;
+      color: #e8e8e8;
+      border-bottom-left-radius: 4px;
+    }
+
+    #tray {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
       gap: 0.5rem;
-      width: 100%;
-      padding: 1rem;
-      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 50px;
+      z-index: 100;
+    }
+
+    #connect-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      border-radius: 25px;
       border: none;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 0.85rem;
       font-weight: 500;
       background: #2563eb;
       color: #fff;
+      white-space: nowrap;
       transition: background 0.2s;
     }
-
-    #mic-btn:hover {
-      background: #1d4ed8;
-    }
-
-    #mic-btn.active {
-      background: #dc2626;
-    }
-
-    #mic-btn:disabled {
-      background: #444;
-      cursor: not-allowed;
-    }
+    #connect-btn:hover { background: #1d4ed8; }
+    #connect-btn.active { background: #dc2626; }
+    #connect-btn:disabled { background: #444; cursor: not-allowed; }
 
     #mute-btn {
       display: none;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      width: 100%;
-      padding: 0.6rem;
-      border-radius: 6px;
-      border: 1px solid #3a3a3a;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
       cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
-      background: #222;
+      background: #333;
       color: #e8e8e8;
-      margin-top: 0.5rem;
+      font-size: 1.1rem;
       transition: background 0.2s;
     }
+    #mute-btn:hover { background: #444; }
+    #mute-btn.muted { background: #7f1d1d; }
+    #mute-btn.auto-muted { background: #78350f; }
 
-    #mute-btn:hover {
-      background: #2f2f2f;
-    }
-
-    #mute-btn.muted {
-      background: #7f1d1d;
-      border-color: #991b1b;
-    }
-
-    #mute-btn.auto-muted {
-      background: #78350f;
-      border-color: #92400e;
-    }
-
-    #status {
-      font-size: 0.85rem;
-      color: #888;
-      margin-top: 0.5rem;
-      text-align: center;
-    }
-
-    .progress-wrap {
-      margin-top: 0.75rem;
-    }
-
-    progress {
-      width: 100%;
-      height: 6px;
-      border-radius: 3px;
-      appearance: none;
-    }
-
-    progress::-webkit-progress-bar {
-      background: #333;
-      border-radius: 3px;
-    }
-
-    progress::-webkit-progress-value {
-      background: #2563eb;
-      border-radius: 3px;
-      transition: width 0.3s;
-    }
-
-    #progress-label {
-      font-size: 0.75rem;
-      color: #888;
-      margin-top: 0.25rem;
-    }
-
-    #upload-input {
+    #file-menu {
+      position: relative;
       display: none;
     }
-
-    #upload-btn {
-      padding: 0.6rem 1.2rem;
-      border-radius: 6px;
-      border: 1px solid #3a3a3a;
-      background: #252525;
-      color: #e8e8e8;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-
-    #upload-btn:hover {
-      background: #2f2f2f;
-    }
-
-    #doc-list {
-      list-style: none;
+    #file-btn {
       display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid #3a3a3a;
+      cursor: pointer;
+      background: #222;
+      color: #e8e8e8;
+      font-size: 1.2rem;
+      transition: background 0.2s;
     }
+    #file-btn:hover { background: #2f2f2f; }
 
-    #doc-list li {
+    #file-dropdown {
+      display: none;
+      position: absolute;
+      bottom: 50px;
+      right: 0;
+      min-width: 200px;
+      max-width: 300px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 0.5rem;
+      z-index: 200;
+    }
+    #file-dropdown.open { display: block; }
+
+    #file-dropdown-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.5rem 0.75rem;
-      background: #222;
-      border-radius: 6px;
-      font-size: 0.9rem;
+      padding: 0.4rem 0.5rem;
+      border-bottom: 1px solid #2a2a2a;
+      margin-bottom: 0.3rem;
     }
+    #file-dropdown-header span { font-size: 0.8rem; color: #888; }
 
-    #doc-list li .del-btn {
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 0.5rem;
+      font-size: 0.8rem;
+      color: #ccc;
+      border-radius: 6px;
+    }
+    .file-item:hover { background: #222; }
+    .file-item .del-btn {
       background: none;
       border: none;
       color: #ef4444;
       cursor: pointer;
       font-size: 0.85rem;
-      padding: 0.2rem 0.4rem;
+      padding: 0 0.3rem;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .file-item:hover .del-btn { opacity: 1; }
+
+    #file-upload-input { display: none; }
+
+    #view-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid #3a3a3a;
+      cursor: pointer;
+      background: #222;
+      color: #e8e8e8;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+    #view-toggle:hover { background: #2f2f2f; }
+
+    .tray-divider {
+      width: 1px;
+      height: 24px;
+      background: #333;
+      margin: 0 0.25rem;
     }
 
-    #doc-list li .del-btn:hover {
-      text-decoration: underline;
-    }
-
-    #transcript {
-      background: #111;
-      border-radius: 6px;
-      padding: 0.75rem;
-      font-size: 0.85rem;
-      color: #aaa;
-      min-height: 60px;
-      white-space: pre-wrap;
-    }
-
-    #state-indicator {
+    #status {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
       font-size: 0.75rem;
       color: #555;
-      text-align: center;
-      margin-top: 0.5rem;
-      min-height: 1.2em;
+      z-index: 100;
     }
 
-    #state-indicator.listening { color: #22c55e; }
-    #state-indicator.thinking { color: #f59e0b; }
-    #state-indicator.speaking { color: #3b82f6; }
+    .progress-wrap {
+      position: fixed;
+      top: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+      z-index: 100;
+    }
+    progress { width: 100%; height: 4px; border-radius: 2px; appearance: none; }
+    progress::-webkit-progress-bar { background: #333; border-radius: 2px; }
+    progress::-webkit-progress-value { background: #2563eb; border-radius: 2px; }
+    #progress-label { font-size: 0.7rem; color: #666; margin-top: 2px; text-align: center; }
+
+    #soundwave-container.hidden { display: none; }
+    #chat-container.hidden { display: none; }
+
+    #chat-container::-webkit-scrollbar { width: 6px; }
+    #chat-container::-webkit-scrollbar-track { background: transparent; }
+    #chat-container::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
   </style>
 </head>
-
 <body>
 
-  <h1>RAG Voice Assistant</h1>
+  <div id="status">Initialising...</div>
 
-  <div class="panel">
-    <h2>Voice</h2>
-    <button id="mic-btn" onclick="toggleSession()" disabled>
-      <span id="mic-icon">&#9654;</span>
-      <span id="mic-label">Connect</span>
-    </button>
-    <button id="mute-btn" onclick="toggleMute()">
-      <span id="mute-icon">&#9744;</span>
-      <span id="mute-label">Mute mic</span>
-    </button>
-    <div id="status">Initialising...</div>
+  <div class="progress-wrap" id="progress-wrap" style="display:none">
+    <progress id="progress-bar" value="0" max="1"></progress>
+    <div id="progress-label">Indexing...</div>
   </div>
 
-  <div class="panel">
-    <h2>Documents</h2>
-    <input type="file" id="upload-input" accept=".pdf,.docx,.txt,.md" onchange="uploadFile(event)">
-    <button id="upload-btn" onclick="document.getElementById('upload-input').click()">
-      + Upload document
-    </button>
-
-    <div class="progress-wrap" id="progress-wrap" style="display:none">
-      <progress id="progress-bar" value="0" max="1"></progress>
-      <div id="progress-label">Indexing...</div>
+  <div id="main-area">
+    <div id="soundwave-container" class="listening">
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
     </div>
 
-    <ul id="doc-list" style="margin-top: 1rem;"></ul>
+    <div id="chat-container" class="hidden"></div>
   </div>
 
-  <div class="panel">
-    <h2>Last transcript</h2>
-    <div id="transcript">-</div>
-    <div id="state-indicator"></div>
+  <div id="tray">
+    <button id="connect-btn" onclick="toggleSession()" disabled>
+      <span id="connect-icon">&#9654;</span>
+      <span id="connect-label">Connect</span>
+    </button>
+
+    <div class="tray-divider" id="divider1" style="display:none"></div>
+
+    <button id="mute-btn" onclick="toggleMute()">
+      <span id="mute-icon">&#9744;</span>
+    </button>
+
+    <div class="tray-divider" id="divider2" style="display:none"></div>
+
+    <div id="file-menu">
+      <button id="file-btn" onclick="toggleFileDropdown()">&#43;</button>
+      <div id="file-dropdown">
+        <div id="file-dropdown-header">
+          <span>Documents</span>
+          <button id="file-upload-trigger" onclick="document.getElementById('file-upload-input').click()" style="background:none;border:none;color:#2563eb;cursor:pointer;font-size:1rem;">&#43;</button>
+        </div>
+        <div id="file-list"></div>
+      </div>
+    </div>
+    <input type="file" id="file-upload-input" accept=".pdf,.docx,.txt,.md" onchange="uploadFile(event)">
+
+    <div class="tray-divider" id="divider3" style="display:none"></div>
+
+    <button id="view-toggle" onclick="toggleView()">
+      <span id="view-icon">&#9776;</span>
+    </button>
   </div>
 
   <script>
-    // When served via nginx (HTTPS), use wss:// through the proxy.
-    // When served directly (HTTP), fall back to direct ws:// connection.
     const LIVEKIT_SERVER_URL = window.location.protocol === "https:"
       ? `wss://${window.location.hostname}`
       : "ws://100.122.86.75:7880";
     const RAG_BASE = "";
-
     const TOKEN_URL = `${RAG_BASE}/livekit-token`;
+
+    const WORD_REVEAL_INTERVAL = 200;
 
     let room = null;
     let isConnected = false;
@@ -273,11 +375,19 @@
     let isAutoMuted = false;
     let localAudioTrack = null;
 
+    let currentView = "auto";
+    let currentState = "";
+    let pendingAssistantText = "";
+    let wordRevealTimer = null;
+    let revealedWordCount = 0;
+    let assistantBubbleEl = null;
+
     window.addEventListener("DOMContentLoaded", async () => {
       await loadDocuments();
       watchIndexingProgress();
-      document.getElementById("mic-btn").disabled = false;
+      document.getElementById("connect-btn").disabled = false;
       setStatus("Ready");
+      updateView();
     });
 
     async function toggleSession() {
@@ -295,23 +405,15 @@
       }
       try {
         setStatus("Fetching token...");
-        console.log("[LiveKit] Fetching token from:", TOKEN_URL);
         const res = await fetch(TOKEN_URL);
         const { token } = await res.json();
-        console.log("[LiveKit] Token received");
 
         room = new LivekitClient.Room();
 
         room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
           if (track.kind === LivekitClient.Track.Kind.Audio) {
             const el = track.attach();
-            document.body.appendChild(el);
-          }
-        });
-
-        room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
-          if (track.kind === LivekitClient.Track.Kind.Audio) {
-            const el = track.attach();
+            el.style.display = "none";
             document.body.appendChild(el);
           }
         });
@@ -319,41 +421,40 @@
         room.on(LivekitClient.RoomEvent.DataReceived, (payload, participant, topic) => {
           try {
             const msg = JSON.parse(new TextDecoder().decode(payload));
-            console.log("[LiveKit] Data received:", msg);
             if (msg.type === "transcript") {
-              document.getElementById("transcript").textContent = msg.text;
-              console.log("[Transcript]", msg.text);
+              addUserBubble(msg.text);
             } else if (msg.type === "state") {
               setState(msg.state);
-              console.log("[State]", msg.state);
+            } else if (msg.type === "assistant_text") {
+              pendingAssistantText = msg.text;
             }
           } catch (e) {
             console.warn("[LiveKit] Failed to parse data:", e);
           }
         });
 
-        room.on(LivekitClient.RoomEvent.Disconnected, (reason) => {
-          console.log("[LiveKit] Disconnected:", reason);
+        room.on(LivekitClient.RoomEvent.Disconnected, () => {
           isConnected = false;
           isMuted = false;
           isAutoMuted = false;
-          updateMicButton(false);
+          updateConnectButton(false);
           updateMuteButton();
           setStatus("Disconnected");
           setState("");
+          clearWordReveal();
+          document.getElementById("chat-container").innerHTML = "";
         });
 
         await room.connect(LIVEKIT_SERVER_URL, token);
-        console.log("[LiveKit] Connected to room:", room.name);
         await room.localParticipant.setMicrophoneEnabled(true);
         localAudioTrack = room.localParticipant.audioTrackPublications.values().next().value?.track;
-        console.log("[LiveKit] Microphone enabled, track:", localAudioTrack ? "captured" : "not found");
 
         isConnected = true;
-        updateMicButton(true);
+        updateConnectButton(true);
         updateMuteButton();
-        setStatus("Connected - speak now");
+        setStatus("");
         setState("listening");
+        updateTrayVisibility(true);
       } catch (err) {
         console.error("[LiveKit] Connection error:", err);
         setStatus("Connection failed: " + err.message);
@@ -363,7 +464,6 @@
     async function disconnectSession() {
       if (room) {
         await room.disconnect();
-        console.log("[LiveKit] Room disconnected");
         room = null;
       }
       localAudioTrack = null;
@@ -371,16 +471,28 @@
       isConnected = false;
       isMuted = false;
       isAutoMuted = false;
-      updateMicButton(false);
+      updateConnectButton(false);
       updateMuteButton();
       setStatus("Disconnected");
       setState("");
+      clearWordReveal();
+      document.getElementById("chat-container").innerHTML = "";
+      updateTrayVisibility(false);
     }
 
-    function updateMicButton(connected) {
-      const btn = document.getElementById("mic-btn");
-      const icon = document.getElementById("mic-icon");
-      const label = document.getElementById("mic-label");
+    function updateTrayVisibility(connected) {
+      document.getElementById("divider1").style.display = connected ? "block" : "none";
+      document.getElementById("divider2").style.display = connected ? "block" : "none";
+      document.getElementById("divider3").style.display = connected ? "block" : "none";
+      document.getElementById("mute-btn").style.display = connected ? "flex" : "none";
+      document.getElementById("file-menu").style.display = connected ? "block" : "none";
+      document.getElementById("view-toggle").style.display = connected ? "flex" : "none";
+    }
+
+    function updateConnectButton(connected) {
+      const btn = document.getElementById("connect-btn");
+      const icon = document.getElementById("connect-icon");
+      const label = document.getElementById("connect-label");
       btn.classList.toggle("active", connected);
       icon.textContent = connected ? "\u25A0" : "\u25B6";
       label.textContent = connected ? "Disconnect" : "Connect";
@@ -391,24 +503,115 @@
     }
 
     function setState(state) {
-      const el = document.getElementById("state-indicator");
-      el.className = state;
-      const labels = {
-        listening: "Listening...",
-        thinking: "Thinking...",
-        speaking: "Speaking...",
-      };
-      el.textContent = labels[state] || "";
+      currentState = state;
+      const sw = document.getElementById("soundwave-container");
+      sw.className = state || "listening";
 
-      if (state === "speaking" && !isMuted) {
+      if (state === "speaking") {
         isAutoMuted = true;
         setMicMuted(true);
-      } else if (state === "listening" && isAutoMuted && !isMuted) {
+        startWordReveal();
+      } else if (state === "listening") {
+        if (isAutoMuted && !isMuted) {
+          isAutoMuted = false;
+          setMicMuted(false);
+        }
         isAutoMuted = false;
-        setMicMuted(false);
-      } else if (state !== "speaking") {
+        clearWordReveal();
+        if (pendingAssistantText && assistantBubbleEl) {
+          assistantBubbleEl.textContent = pendingAssistantText;
+        }
+        pendingAssistantText = "";
+        assistantBubbleEl = null;
+      } else if (state === "thinking") {
         isAutoMuted = false;
+        clearWordReveal();
       }
+
+      updateView();
+    }
+
+    function startWordReveal() {
+      if (!pendingAssistantText) return;
+      clearWordReveal();
+      assistantBubbleEl = addAssistantBubble("");
+      const words = pendingAssistantText.split(/\s+/);
+      revealedWordCount = 0;
+
+      wordRevealTimer = setInterval(() => {
+        if (revealedWordCount < words.length) {
+          assistantBubbleEl.textContent = words.slice(0, revealedWordCount + 1).join(" ");
+          revealedWordCount++;
+          scrollToBottom();
+        } else {
+          clearWordReveal();
+        }
+      }, WORD_REVEAL_INTERVAL);
+    }
+
+    function clearWordReveal() {
+      if (wordRevealTimer) {
+        clearInterval(wordRevealTimer);
+        wordRevealTimer = null;
+      }
+      revealedWordCount = 0;
+    }
+
+    function addUserBubble(text) {
+      const container = document.getElementById("chat-container");
+      const bubble = document.createElement("div");
+      bubble.className = "bubble user";
+      bubble.textContent = text;
+      container.appendChild(bubble);
+      scrollToBottom();
+    }
+
+    function addAssistantBubble(text) {
+      const container = document.getElementById("chat-container");
+      const bubble = document.createElement("div");
+      bubble.className = "bubble assistant";
+      bubble.textContent = text;
+      container.appendChild(bubble);
+      scrollToBottom();
+      return bubble;
+    }
+
+    function scrollToBottom() {
+      const container = document.getElementById("chat-container");
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function updateView() {
+      const sw = document.getElementById("soundwave-container");
+      const chat = document.getElementById("chat-container");
+      const viewIcon = document.getElementById("view-icon");
+
+      if (currentView === "auto") {
+        if (currentState === "speaking") {
+          sw.classList.remove("hidden");
+          chat.classList.add("hidden");
+          viewIcon.textContent = "\u25A1";
+        } else {
+          sw.classList.add("hidden");
+          chat.classList.remove("hidden");
+          viewIcon.textContent = "\u2502\u2502\u2502";
+        }
+      } else if (currentView === "soundwave") {
+        sw.classList.remove("hidden");
+        chat.classList.add("hidden");
+        viewIcon.textContent = "\u2502\u2502\u2502";
+      } else {
+        sw.classList.add("hidden");
+        chat.classList.remove("hidden");
+        viewIcon.textContent = "\u25A1";
+      }
+    }
+
+    function toggleView() {
+      if (currentView === "auto") currentView = "soundwave";
+      else if (currentView === "soundwave") currentView = "chat";
+      else currentView = "auto";
+      updateView();
     }
 
     async function setMicMuted(muted) {
@@ -419,7 +622,6 @@
         } else {
           await localAudioTrack.unmute();
         }
-        console.log("[LiveKit] Microphone", muted ? "muted" : "unmuted");
         updateMuteButton();
       } catch (err) {
         console.error("[LiveKit] Failed to toggle mic:", err);
@@ -435,34 +637,41 @@
     function updateMuteButton() {
       const btn = document.getElementById("mute-btn");
       const icon = document.getElementById("mute-icon");
-      const label = document.getElementById("mute-label");
-      btn.style.display = isConnected ? "flex" : "none";
       btn.className = isMuted ? "muted" : (isAutoMuted ? "auto-muted" : "");
-      icon.textContent = (isMuted || isAutoMuted) ? "\uD83C\uDF99\uFE0F\u2716" : "\uD83C\uDF99\uFE0F";
-      label.textContent = (isMuted || isAutoMuted) ? "Unmute mic" : "Mute mic";
+      icon.textContent = (isMuted || isAutoMuted) ? "\u2716" : "\u2713";
     }
+
+    function toggleFileDropdown() {
+      document.getElementById("file-dropdown").classList.toggle("open");
+    }
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#file-menu")) {
+        document.getElementById("file-dropdown").classList.remove("open");
+      }
+    });
 
     async function loadDocuments() {
       const res = await fetch(`${RAG_BASE}/documents`);
       const data = await res.json();
-      renderDocumentList(data.documents || []);
+      renderFileList(data.documents || []);
     }
 
-    function renderDocumentList(docs) {
-      const list = document.getElementById("doc-list");
+    function renderFileList(docs) {
+      const list = document.getElementById("file-list");
       list.innerHTML = "";
       if (docs.length === 0) {
-        list.innerHTML = "<li style='color:#666'>No documents indexed yet</li>";
+        list.innerHTML = '<div style="padding:0.5rem;font-size:0.8rem;color:#666;">No documents</div>';
         return;
       }
       docs.forEach(doc => {
-        const li = document.createElement("li");
-        const size = (doc.size_bytes / 1024).toFixed(1) + " KB";
-        li.innerHTML = `
-        <span>${doc.filename} <span style="color:#666;font-size:0.8em">${size}</span></span>
-        <button class="del-btn" onclick="deleteDocument('${doc.filename}')">Delete</button>
-      `;
-        list.appendChild(li);
+        const item = document.createElement("div");
+        item.className = "file-item";
+        item.innerHTML = `
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.filename}</span>
+          <button class="del-btn" onclick="deleteDocument('${doc.filename}')">&minus;</button>
+        `;
+        list.appendChild(item);
       });
     }
 
@@ -471,15 +680,11 @@
       if (!file) return;
       event.target.value = "";
 
-      const formData = new FormData();
-      formData.append("file", file);
-
       setIndexingUI(true, 0, "uploading");
       try {
-        const res = await fetch(`${RAG_BASE}/upload`, {
-          method: "POST",
-          body: formData,
-        });
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`${RAG_BASE}/upload`, { method: "POST", body: formData });
         if (!res.ok) {
           const err = await res.json();
           alert("Upload failed: " + err.detail);
@@ -492,30 +697,21 @@
     }
 
     async function deleteDocument(filename) {
-      if (!confirm(`Delete "${filename}" from the index?`)) return;
-      const res = await fetch(`${RAG_BASE}/documents/${encodeURIComponent(filename)}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        await loadDocuments();
-      } else {
-        alert("Delete failed");
-      }
+      if (!confirm(`Delete "${filename}"?`)) return;
+      const res = await fetch(`${RAG_BASE}/documents/${encodeURIComponent(filename)}`, { method: "DELETE" });
+      if (res.ok) await loadDocuments();
+      else alert("Delete failed");
     }
 
     let indexingES = null;
 
     function watchIndexingProgress() {
-      if (indexingES) {
-        indexingES.close();
-        indexingES = null;
-      }
+      if (indexingES) { indexingES.close(); indexingES = null; }
       indexingES = new EventSource(`${RAG_BASE}/index-progress`);
       indexingES.onmessage = (event) => {
         const data = JSON.parse(event.data);
         const progress = parseFloat(data.progress);
         const stage = data.stage || "";
-
         if (progress >= 1.0) {
           setIndexingUI(false);
           loadDocuments();
@@ -527,10 +723,7 @@
         }
       };
       indexingES.onerror = () => {
-        if (indexingES) {
-          indexingES.close();
-          indexingES = null;
-        }
+        if (indexingES) { indexingES.close(); indexingES = null; }
         setTimeout(watchIndexingProgress, 5000);
       };
     }
@@ -540,15 +733,10 @@
       const wrap = document.getElementById("progress-wrap");
       const bar = document.getElementById("progress-bar");
       const label = document.getElementById("progress-label");
-      const micBtn = document.getElementById("mic-btn");
-
       wrap.style.display = active ? "block" : "none";
       bar.value = progress;
       label.textContent = active ? `${stage.replace(/_/g, " ")} (${Math.round(progress * 100)}%)` : "";
-
-      micBtn.disabled = active && !isConnected;
     }
   </script>
 </body>
-
 </html>

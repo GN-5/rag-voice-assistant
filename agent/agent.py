@@ -32,6 +32,7 @@ class RAGAssistant(Agent):
         super().__init__(instructions=SYSTEM_PROMPT)
         self._http_client = httpx.AsyncClient(timeout=5.0)
         self._room = room
+        self._pending_text = ""
     
     async def _broadcast(self, msg_type: str, **kwargs):
         if not self._room:
@@ -85,12 +86,23 @@ class RAGAssistant(Agent):
             logger.error(f"RAG retrieval error: {e}. Proceeding without context.")
     
     async def run(self, llm, chat_ctx):
+        self._pending_text = ""
+        collected_chunks = []
+        
+        async for chunk in super().run(llm, chat_ctx):
+            collected_chunks.append(chunk)
+            if hasattr(chunk, 'delta') and chunk.delta:
+                self._pending_text += chunk.delta
+        
+        full_text = self._pending_text.strip()
+        
+        await self._broadcast("assistant_text", text=full_text)
         await self._broadcast("state", state="speaking")
-        try:
-            async for chunk in await super().run(llm, chat_ctx):
-                yield chunk
-        finally:
-            await self._broadcast("state", state="listening")
+        
+        for chunk in collected_chunks:
+            yield chunk
+        
+        await self._broadcast("state", state="listening")
 
 
 server = AgentServer()
