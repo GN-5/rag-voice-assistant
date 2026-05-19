@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import time
 import asyncio
 import httpx
 from livekit import agents
@@ -33,8 +32,6 @@ class RAGAssistant(Agent):
         self._http_client = httpx.AsyncClient(timeout=5.0)
         self._room = room
         self._session = session
-        self._pending_text = ""
-        self._listening_timer: asyncio.Task | None = None
 
     async def _broadcast(self, msg_type: str, **kwargs):
         if not self._room:
@@ -44,24 +41,16 @@ class RAGAssistant(Agent):
             json.dumps(payload).encode(),
         )
 
-    def _cancel_listening_timer(self):
-        if self._listening_timer and not self._listening_timer.done():
-            self._listening_timer.cancel()
-            self._listening_timer = None
-
     async def on_user_turn_completed(
         self,
         turn_ctx: llm.ChatContext,
         new_message: llm.ChatMessage,
     ) -> None:
-        self._cancel_listening_timer()
-
         query = new_message.text_content
         if not query:
             return
 
         await self._broadcast("transcript", text=query)
-        await self._broadcast("state", state="thinking")
 
         try:
             response = await self._http_client.post(
@@ -93,23 +82,6 @@ class RAGAssistant(Agent):
             logger.warning(f"RAG service unreachable: {e}. Proceeding without context.")
         except Exception as e:
             logger.error(f"RAG retrieval error: {e}. Proceeding without context.")
-
-    async def on_agent_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage):
-        self._pending_text = new_message.text_content or ""
-        await self._broadcast("assistant_text", text=self._pending_text)
-        await self._broadcast("state", state="speaking")
-
-        estimated_duration = max(1.5, len(self._pending_text) / 15)
-        self._listening_timer = asyncio.create_task(self._schedule_listening(estimated_duration))
-        logger.info(f"Agent turn complete. Text: {len(self._pending_text)} chars, est TTS: {estimated_duration:.1f}s")
-
-    async def _schedule_listening(self, delay: float):
-        try:
-            await asyncio.sleep(delay)
-            await self._broadcast("state", state="listening")
-            logger.info("TTS estimated complete, back to listening")
-        except asyncio.CancelledError:
-            pass
 
 
 server = AgentServer()
@@ -155,6 +127,17 @@ async def session_handler(ctx: agents.JobContext):
     )
 
     agent._session = session
+
+    @session.on("agent_state_changed")
+    def on_agent_state_changed(ev):
+        logger.info(f"Agent state: {ev.old_state} -> {ev.new_state}")
+        asyncio.create_task(agent._broadcast("state", state=ev.new_state))
+
+    @session.on("conversation_item_added")
+    def on_conversation_item_added(ev):
+        if ev.item.role == "assistant" and ev.item.text_content:
+            logger.info(f"Assistant text: {len(ev.item.text_content)} chars")
+            asyncio.create_task(agent._broadcast("assistant_text", text=ev.item.text_content))
 
     await session.start(
         room=ctx.room,
