@@ -34,8 +34,8 @@ class RAGAssistant(Agent):
         self._room = room
         self._session = session
         self._pending_text = ""
-        self._speaking_broadcast = False
-    
+        self._listening_timer: asyncio.Task | None = None
+
     async def _broadcast(self, msg_type: str, **kwargs):
         if not self._room:
             return
@@ -43,19 +43,26 @@ class RAGAssistant(Agent):
         await self._room.local_participant.publish_data(
             json.dumps(payload).encode(),
         )
-    
+
+    def _cancel_listening_timer(self):
+        if self._listening_timer and not self._listening_timer.done():
+            self._listening_timer.cancel()
+            self._listening_timer = None
+
     async def on_user_turn_completed(
         self,
         turn_ctx: llm.ChatContext,
         new_message: llm.ChatMessage,
     ) -> None:
+        self._cancel_listening_timer()
+
         query = new_message.text_content
         if not query:
             return
-        
+
         await self._broadcast("transcript", text=query)
         await self._broadcast("state", state="thinking")
-        
+
         try:
             response = await self._http_client.post(
                 f"{RAG_SERVICE_URL}/retrieve",
@@ -65,7 +72,7 @@ class RAGAssistant(Agent):
             data = response.json()
             chunks = data.get("chunks", [])
             sources = data.get("sources", [])
-            
+
             if chunks:
                 context_text = "\n\n---\n\n".join(chunks)
                 source_note = f"\n\nSources: {', '.join(sources)}" if sources else ""
@@ -81,16 +88,28 @@ class RAGAssistant(Agent):
                 logger.info(f"Injected {len(chunks)} RAG chunks from {sources}")
             else:
                 logger.info("RAG returned no chunks for query")
-        
+
         except httpx.RequestError as e:
             logger.warning(f"RAG service unreachable: {e}. Proceeding without context.")
         except Exception as e:
             logger.error(f"RAG retrieval error: {e}. Proceeding without context.")
-    
+
     async def on_agent_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage):
         self._pending_text = new_message.text_content or ""
         await self._broadcast("assistant_text", text=self._pending_text)
-        logger.info(f"Agent turn complete. Text length: {len(self._pending_text)}")
+        await self._broadcast("state", state="speaking")
+
+        estimated_duration = max(1.5, len(self._pending_text) / 15)
+        self._listening_timer = asyncio.create_task(self._schedule_listening(estimated_duration))
+        logger.info(f"Agent turn complete. Text: {len(self._pending_text)} chars, est TTS: {estimated_duration:.1f}s")
+
+    async def _schedule_listening(self, delay: float):
+        try:
+            await asyncio.sleep(delay)
+            await self._broadcast("state", state="listening")
+            logger.info("TTS estimated complete, back to listening")
+        except asyncio.CancelledError:
+            pass
 
 
 server = AgentServer()
@@ -99,7 +118,7 @@ server = AgentServer()
 @server.rtc_session()
 async def session_handler(ctx: agents.JobContext):
     logger.info(f"New session in room: {ctx.room.name}")
-    
+
     stt = lk_openai.STT(
         base_url="http://speaches:8000/v1",
         api_key="not-required",
@@ -107,14 +126,14 @@ async def session_handler(ctx: agents.JobContext):
         language="en",
     )
     logger.info("STT initialized with Systran/faster-whisper-medium")
-    
+
     llm_model = lk_openai.LLM(
         base_url=LLAMA_CPP_BASE_URL,
         api_key="not-required",
         model="gemma",
     )
     logger.info(f"LLM initialized with llama.cpp at {LLAMA_CPP_BASE_URL}")
-    
+
     tts = lk_openai.TTS(
         base_url=KOKORO_BASE_URL,
         api_key="not-required",
@@ -123,48 +142,30 @@ async def session_handler(ctx: agents.JobContext):
         response_format="pcm",
     )
     logger.info(f"TTS initialized with Kokoro at {KOKORO_BASE_URL}")
-    
+
     vad = silero.VAD.load()
-    
+
     agent = RAGAssistant(room=ctx.room)
-    
+
     session = AgentSession(
         stt=stt,
         llm=llm_model,
         tts=tts,
         vad=vad,
     )
-    
+
     agent._session = session
-    
-    ctx.room.on("track_subscribed", lambda track, publication, participant: asyncio.create_task(_on_track_subscribed(track, participant, agent)))
-    ctx.room.on("track_unsubscribed", lambda track, publication, participant: asyncio.create_task(_on_track_unsubscribed(track, participant, agent)))
-    
+
     await session.start(
         room=ctx.room,
         agent=agent,
     )
     logger.info("AgentSession started")
-    
+
     await session.generate_reply(
         instructions="Greet the user warmly and briefly. Tell them you're ready to answer questions about their documents."
     )
     logger.info("Greeting generated")
-
-
-async def _on_track_subscribed(track, participant, agent):
-    if track.kind == "audio" and participant.identity and "agent" in participant.identity.lower():
-        if not agent._speaking_broadcast:
-            agent._speaking_broadcast = True
-            await agent._broadcast("state", state="speaking")
-            logger.info("Agent audio track subscribed - broadcasting speaking")
-
-
-async def _on_track_unsubscribed(track, participant, agent):
-    if track.kind == "audio" and participant.identity and "agent" in participant.identity.lower():
-        agent._speaking_broadcast = False
-        await agent._broadcast("state", state="listening")
-        logger.info("Agent audio track unsubscribed - broadcasting listening")
 
 
 if __name__ == "__main__":
