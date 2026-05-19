@@ -90,7 +90,6 @@ class RAGAssistant(Agent):
     async def on_agent_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage):
         self._pending_text = new_message.text_content or ""
         await self._broadcast("assistant_text", text=self._pending_text)
-        await self._broadcast("state", state="listening")
         logger.info(f"Agent turn complete. Text length: {len(self._pending_text)}")
 
 
@@ -138,7 +137,8 @@ async def session_handler(ctx: agents.JobContext):
     
     agent._session = session
     
-    ctx.room.on("track_subscribed", lambda track, publication, participant: _on_track_subscribed(track, participant, agent))
+    ctx.room.on("track_subscribed", lambda track, publication, participant: asyncio.create_task(_on_track_subscribed(track, participant, agent)))
+    ctx.room.on("track_unsubscribed", lambda track, publication, participant: asyncio.create_task(_on_track_unsubscribed(track, participant, agent)))
     
     await session.start(
         room=ctx.room,
@@ -158,6 +158,13 @@ async def _on_track_subscribed(track, participant, agent):
             agent._speaking_broadcast = True
             await agent._broadcast("state", state="speaking")
             logger.info("Agent audio track subscribed - broadcasting speaking")
+
+
+async def _on_track_unsubscribed(track, participant, agent):
+    if track.kind == "audio" and participant.identity and "agent" in participant.identity.lower():
+        agent._speaking_broadcast = False
+        await agent._broadcast("state", state="listening")
+        logger.info("Agent audio track unsubscribed - broadcasting listening")
 
 
 if __name__ == "__main__":
