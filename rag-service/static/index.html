@@ -14,12 +14,15 @@
       color: #e8e8e8;
       height: 100vh;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
     }
 
-    #main-area {
-      flex: 1;
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 680px 1fr;
+      height: 100vh;
+    }
+
+    .col-center {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -28,20 +31,62 @@
       overflow: hidden;
     }
 
+    #connect-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    #connect-screen h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    #big-connect-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      padding: 1rem 2.5rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+      font-weight: 500;
+      background: #2563eb;
+      color: #fff;
+      transition: background 0.2s;
+    }
+    #big-connect-btn:hover { background: #1d4ed8; }
+    #big-connect-btn:disabled { background: #444; cursor: not-allowed; }
+
+    #session-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+    }
+
     #soundwave-container {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 1.2vw;
-      height: 40vh;
+      gap: 1vw;
+      height: 30vh;
+      min-height: 120px;
+      flex-shrink: 0;
       transition: opacity 0.3s;
     }
 
     .wave-bar {
-      width: 3vw;
-      min-width: 24px;
-      max-width: 48px;
-      height: 20vh;
+      width: 2.5vw;
+      min-width: 20px;
+      max-width: 40px;
+      height: 15vh;
+      min-height: 60px;
       background: #fff;
       border-radius: 2vw;
       transition: transform 0.15s ease;
@@ -91,13 +136,10 @@
     }
 
     #chat-container {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 80px;
+      flex: 1;
+      width: 100%;
       overflow-y: auto;
-      padding: 1.5rem;
+      padding: 1rem 0;
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
@@ -106,7 +148,7 @@
     }
 
     .bubble {
-      max-width: 70%;
+      max-width: 85%;
       padding: 0.75rem 1rem;
       border-radius: 12px;
       font-size: 0.95rem;
@@ -129,10 +171,6 @@
     }
 
     #tray {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -140,30 +178,13 @@
       background: #1a1a1a;
       border: 1px solid #2a2a2a;
       border-radius: 50px;
-      z-index: 100;
+      margin-top: auto;
+      margin-bottom: 20px;
+      flex-shrink: 0;
     }
-
-    #connect-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.5rem 1rem;
-      border-radius: 25px;
-      border: none;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
-      background: #2563eb;
-      color: #fff;
-      white-space: nowrap;
-      transition: background 0.2s;
-    }
-    #connect-btn:hover { background: #1d4ed8; }
-    #connect-btn.active { background: #dc2626; }
-    #connect-btn:disabled { background: #444; cursor: not-allowed; }
 
     #mute-btn {
-      display: none;
+      display: flex;
       align-items: center;
       justify-content: center;
       width: 44px;
@@ -172,41 +193,36 @@
       border: none;
       cursor: pointer;
       background: #333;
-      color: #e8e8e8;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       transition: background 0.2s;
     }
     #mute-btn:hover { background: #444; }
     #mute-btn.muted { background: #7f1d1d; }
     #mute-btn.auto-muted { background: #78350f; }
 
-    #file-menu {
-      position: relative;
-      display: none;
-    }
+    #file-menu { position: relative; }
     #file-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      border: 1px solid #3a3a3a;
+      border: none;
       cursor: pointer;
-      background: #222;
-      color: #e8e8e8;
+      background: #333;
       font-size: 1.2rem;
       transition: background 0.2s;
     }
-    #file-btn:hover { background: #2f2f2f; }
+    #file-btn:hover { background: #444; }
 
     #file-dropdown {
       display: none;
       position: absolute;
-      bottom: 50px;
+      bottom: 54px;
       right: 0;
       min-width: 200px;
-      max-width: 300px;
+      max-width: 280px;
       background: #1a1a1a;
       border: 1px solid #2a2a2a;
       border-radius: 12px;
@@ -240,7 +256,7 @@
       border: none;
       color: #ef4444;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 1rem;
       padding: 0 0.3rem;
       opacity: 0;
       transition: opacity 0.15s;
@@ -250,26 +266,25 @@
     #file-upload-input { display: none; }
 
     #view-toggle {
-      display: none;
+      display: flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      border: 1px solid #3a3a3a;
+      border: none;
       cursor: pointer;
-      background: #222;
-      color: #e8e8e8;
-      font-size: 1rem;
+      background: #333;
+      font-size: 1.1rem;
       transition: background 0.2s;
     }
-    #view-toggle:hover { background: #2f2f2f; }
+    #view-toggle:hover { background: #444; }
 
     .tray-divider {
       width: 1px;
       height: 24px;
       background: #333;
-      margin: 0 0.25rem;
+      margin: 0 0.15rem;
     }
 
     #status {
@@ -312,51 +327,63 @@
     <div id="progress-label">Indexing...</div>
   </div>
 
-  <div id="main-area">
-    <div id="soundwave-container" class="listening">
-      <div class="wave-bar"></div>
-      <div class="wave-bar"></div>
-      <div class="wave-bar"></div>
-      <div class="wave-bar"></div>
-      <div class="wave-bar"></div>
-      <div class="wave-bar"></div>
-      <div class="wave-bar"></div>
-    </div>
+  <div class="layout">
+    <div></div>
+    <div class="col-center">
+      <div id="connect-screen">
+        <h1>RAG Voice Assistant</h1>
+        <button id="big-connect-btn" onclick="toggleSession()" disabled>
+          <span>&#9654;</span> Connect
+        </button>
+      </div>
 
-    <div id="chat-container" class="hidden"></div>
-  </div>
-
-  <div id="tray">
-    <button id="connect-btn" onclick="toggleSession()" disabled>
-      <span id="connect-icon">&#9654;</span>
-      <span id="connect-label">Connect</span>
-    </button>
-
-    <div class="tray-divider" id="divider1" style="display:none"></div>
-
-    <button id="mute-btn" onclick="toggleMute()">
-      <span id="mute-icon">&#9744;</span>
-    </button>
-
-    <div class="tray-divider" id="divider2" style="display:none"></div>
-
-    <div id="file-menu">
-      <button id="file-btn" onclick="toggleFileDropdown()">&#43;</button>
-      <div id="file-dropdown">
-        <div id="file-dropdown-header">
-          <span>Documents</span>
-          <button id="file-upload-trigger" onclick="document.getElementById('file-upload-input').click()" style="background:none;border:none;color:#2563eb;cursor:pointer;font-size:1rem;">&#43;</button>
+      <div id="session-screen">
+        <div id="soundwave-container" class="listening">
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
         </div>
-        <div id="file-list"></div>
+
+        <div id="chat-container" class="hidden"></div>
+
+        <div id="tray">
+          <button id="mute-btn" onclick="toggleMute()">
+            <span id="mute-icon">🎤</span>
+          </button>
+
+          <div class="tray-divider"></div>
+
+          <div id="file-menu">
+            <button id="file-btn" onclick="toggleFileDropdown()">📁</button>
+            <div id="file-dropdown">
+              <div id="file-dropdown-header">
+                <span>Documents</span>
+                <button id="file-upload-trigger" onclick="document.getElementById('file-upload-input').click()" style="background:none;border:none;color:#2563eb;cursor:pointer;font-size:1rem;">+</button>
+              </div>
+              <div id="file-list"></div>
+            </div>
+          </div>
+          <input type="file" id="file-upload-input" accept=".pdf,.docx,.txt,.md" onchange="uploadFile(event)">
+
+          <div class="tray-divider"></div>
+
+          <button id="view-toggle" onclick="toggleView()">
+            <span id="view-icon">💬</span>
+          </button>
+
+          <div class="tray-divider"></div>
+
+          <button id="disconnect-btn" onclick="disconnectSession()" style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;background:#7f1d1d;font-size:1.1rem;transition:background 0.2s;" onmouseover="this.style.background='#991b1b'" onmouseout="this.style.background='#7f1d1b'">
+            📞
+          </button>
+        </div>
       </div>
     </div>
-    <input type="file" id="file-upload-input" accept=".pdf,.docx,.txt,.md" onchange="uploadFile(event)">
-
-    <div class="tray-divider" id="divider3" style="display:none"></div>
-
-    <button id="view-toggle" onclick="toggleView()">
-      <span id="view-icon">&#9776;</span>
-    </button>
+    <div></div>
   </div>
 
   <script>
@@ -385,7 +412,7 @@
     window.addEventListener("DOMContentLoaded", async () => {
       await loadDocuments();
       watchIndexingProgress();
-      document.getElementById("connect-btn").disabled = false;
+      document.getElementById("big-connect-btn").disabled = false;
       setStatus("Ready");
       updateView();
     });
@@ -405,8 +432,10 @@
       }
       try {
         setStatus("Fetching token...");
+        console.log("[LiveKit] Fetching token from:", TOKEN_URL);
         const res = await fetch(TOKEN_URL);
         const { token } = await res.json();
+        console.log("[LiveKit] Token received");
 
         room = new LivekitClient.Room();
 
@@ -421,11 +450,15 @@
         room.on(LivekitClient.RoomEvent.DataReceived, (payload, participant, topic) => {
           try {
             const msg = JSON.parse(new TextDecoder().decode(payload));
+            console.log("[LiveKit] Data received:", msg);
             if (msg.type === "transcript") {
+              console.log("[Transcript]", msg.text);
               addUserBubble(msg.text);
             } else if (msg.type === "state") {
+              console.log("[State]", msg.state);
               setState(msg.state);
             } else if (msg.type === "assistant_text") {
+              console.log("[AssistantText]", msg.text);
               pendingAssistantText = msg.text;
             }
           } catch (e) {
@@ -433,28 +466,30 @@
           }
         });
 
-        room.on(LivekitClient.RoomEvent.Disconnected, () => {
+        room.on(LivekitClient.RoomEvent.Disconnected, (reason) => {
+          console.log("[LiveKit] Disconnected:", reason);
           isConnected = false;
           isMuted = false;
           isAutoMuted = false;
-          updateConnectButton(false);
-          updateMuteButton();
           setStatus("Disconnected");
           setState("");
           clearWordReveal();
           document.getElementById("chat-container").innerHTML = "";
+          document.getElementById("connect-screen").style.display = "flex";
+          document.getElementById("session-screen").style.display = "none";
         });
 
         await room.connect(LIVEKIT_SERVER_URL, token);
+        console.log("[LiveKit] Connected to room:", room.name);
         await room.localParticipant.setMicrophoneEnabled(true);
         localAudioTrack = room.localParticipant.audioTrackPublications.values().next().value?.track;
+        console.log("[LiveKit] Microphone enabled, track:", localAudioTrack ? "captured" : "not found");
 
         isConnected = true;
-        updateConnectButton(true);
-        updateMuteButton();
         setStatus("");
         setState("listening");
-        updateTrayVisibility(true);
+        document.getElementById("connect-screen").style.display = "none";
+        document.getElementById("session-screen").style.display = "flex";
       } catch (err) {
         console.error("[LiveKit] Connection error:", err);
         setStatus("Connection failed: " + err.message);
@@ -471,31 +506,12 @@
       isConnected = false;
       isMuted = false;
       isAutoMuted = false;
-      updateConnectButton(false);
-      updateMuteButton();
       setStatus("Disconnected");
       setState("");
       clearWordReveal();
       document.getElementById("chat-container").innerHTML = "";
-      updateTrayVisibility(false);
-    }
-
-    function updateTrayVisibility(connected) {
-      document.getElementById("divider1").style.display = connected ? "block" : "none";
-      document.getElementById("divider2").style.display = connected ? "block" : "none";
-      document.getElementById("divider3").style.display = connected ? "block" : "none";
-      document.getElementById("mute-btn").style.display = connected ? "flex" : "none";
-      document.getElementById("file-menu").style.display = connected ? "block" : "none";
-      document.getElementById("view-toggle").style.display = connected ? "flex" : "none";
-    }
-
-    function updateConnectButton(connected) {
-      const btn = document.getElementById("connect-btn");
-      const icon = document.getElementById("connect-icon");
-      const label = document.getElementById("connect-label");
-      btn.classList.toggle("active", connected);
-      icon.textContent = connected ? "\u25A0" : "\u25B6";
-      label.textContent = connected ? "Disconnect" : "Connect";
+      document.getElementById("connect-screen").style.display = "flex";
+      document.getElementById("session-screen").style.display = "none";
     }
 
     function setStatus(msg) {
@@ -590,20 +606,20 @@
         if (currentState === "speaking") {
           sw.classList.remove("hidden");
           chat.classList.add("hidden");
-          viewIcon.textContent = "\u25A1";
+          viewIcon.textContent = "💬";
         } else {
           sw.classList.add("hidden");
           chat.classList.remove("hidden");
-          viewIcon.textContent = "\u2502\u2502\u2502";
+          viewIcon.textContent = "〰️";
         }
       } else if (currentView === "soundwave") {
         sw.classList.remove("hidden");
         chat.classList.add("hidden");
-        viewIcon.textContent = "\u2502\u2502\u2502";
+        viewIcon.textContent = "〰️";
       } else {
         sw.classList.add("hidden");
         chat.classList.remove("hidden");
-        viewIcon.textContent = "\u25A1";
+        viewIcon.textContent = "💬";
       }
     }
 
@@ -622,6 +638,7 @@
         } else {
           await localAudioTrack.unmute();
         }
+        console.log("[LiveKit] Microphone", muted ? "muted" : "unmuted");
         updateMuteButton();
       } catch (err) {
         console.error("[LiveKit] Failed to toggle mic:", err);
@@ -638,7 +655,7 @@
       const btn = document.getElementById("mute-btn");
       const icon = document.getElementById("mute-icon");
       btn.className = isMuted ? "muted" : (isAutoMuted ? "auto-muted" : "");
-      icon.textContent = (isMuted || isAutoMuted) ? "\u2716" : "\u2713";
+      icon.textContent = (isMuted || isAutoMuted) ? "🔇" : "🎤";
     }
 
     function toggleFileDropdown() {
