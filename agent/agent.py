@@ -87,22 +87,27 @@ class RAGAssistant(Agent):
     
     async def run(self, llm, chat_ctx):
         self._pending_text = ""
-        collected_chunks = []
+        first_chunk = True
         
-        async for chunk in super().run(llm, chat_ctx):
-            collected_chunks.append(chunk)
-            if hasattr(chunk, 'delta') and chunk.delta:
-                self._pending_text += chunk.delta
+        try:
+            async for chunk in super().run(llm, chat_ctx):
+                if first_chunk:
+                    await self._broadcast("state", state="speaking")
+                    first_chunk = False
+                
+                if hasattr(chunk, 'delta') and chunk.delta:
+                    self._pending_text += chunk.delta
+                
+                yield chunk
+            
+            full_text = self._pending_text.strip()
+            await self._broadcast("assistant_text", text=full_text)
+            await self._broadcast("state", state="listening")
+            logger.info(f"Agent turn complete. Text length: {len(full_text)}")
         
-        full_text = self._pending_text.strip()
-        
-        await self._broadcast("assistant_text", text=full_text)
-        await self._broadcast("state", state="speaking")
-        
-        for chunk in collected_chunks:
-            yield chunk
-        
-        await self._broadcast("state", state="listening")
+        except Exception as e:
+            logger.error(f"run() error: {e}", exc_info=True)
+            raise
 
 
 server = AgentServer()

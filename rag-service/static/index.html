@@ -408,6 +408,7 @@
     let wordRevealTimer = null;
     let revealedWordCount = 0;
     let assistantBubbleEl = null;
+    let wordRevealStarted = false;
 
     window.addEventListener("DOMContentLoaded", async () => {
       await loadDocuments();
@@ -460,6 +461,10 @@
             } else if (msg.type === "assistant_text") {
               console.log("[AssistantText]", msg.text);
               pendingAssistantText = msg.text;
+              if (wordRevealStarted && assistantBubbleEl) {
+                assistantBubbleEl.textContent = pendingAssistantText;
+                clearWordReveal();
+              }
             }
           } catch (e) {
             console.warn("[LiveKit] Failed to parse data:", e);
@@ -526,6 +531,7 @@
       if (state === "speaking") {
         isAutoMuted = true;
         setMicMuted(true);
+        wordRevealStarted = true;
         startWordReveal();
       } else if (state === "listening") {
         if (isAutoMuted && !isMuted) {
@@ -533,6 +539,7 @@
           setMicMuted(false);
         }
         isAutoMuted = false;
+        wordRevealStarted = false;
         clearWordReveal();
         if (pendingAssistantText && assistantBubbleEl) {
           assistantBubbleEl.textContent = pendingAssistantText;
@@ -541,6 +548,7 @@
         assistantBubbleEl = null;
       } else if (state === "thinking") {
         isAutoMuted = false;
+        wordRevealStarted = false;
         clearWordReveal();
       }
 
@@ -548,7 +556,10 @@
     }
 
     function startWordReveal() {
-      if (!pendingAssistantText) return;
+      if (!pendingAssistantText) {
+        assistantBubbleEl = addAssistantBubble("...");
+        return;
+      }
       clearWordReveal();
       assistantBubbleEl = addAssistantBubble("");
       const words = pendingAssistantText.split(/\s+/);
