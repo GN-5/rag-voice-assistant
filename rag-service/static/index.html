@@ -387,9 +387,7 @@
   </div>
 
   <script>
-    const LIVEKIT_SERVER_URL = window.location.protocol === "https:"
-      ? `wss://${window.location.hostname}`
-      : "ws://100.122.86.75:7880";
+    const DEFAULT_LIVEKIT_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
     const RAG_BASE = "";
     const TOKEN_URL = `${RAG_BASE}/livekit-token`;
 
@@ -435,7 +433,7 @@
         setStatus("Fetching token...");
         console.log("[LiveKit] Fetching token from:", TOKEN_URL);
         const res = await fetch(TOKEN_URL);
-        const { token } = await res.json();
+        const { token, url } = await res.json();
         console.log("[LiveKit] Token received");
 
         room = new LivekitClient.Room();
@@ -484,7 +482,7 @@
           document.getElementById("session-screen").style.display = "none";
         });
 
-        await room.connect(LIVEKIT_SERVER_URL, token);
+        await room.connect(url || DEFAULT_LIVEKIT_URL, token);
         console.log("[LiveKit] Connected to room:", room.name);
         await room.localParticipant.setMicrophoneEnabled(true);
         localAudioTrack = room.localParticipant.audioTrackPublications.values().next().value?.track;

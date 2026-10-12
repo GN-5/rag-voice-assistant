@@ -1,51 +1,24 @@
+# Local development. STT/TTS/LLM come from Tarka's public API (https://tarka.rest/v1),
+# so no GPU is needed. For the Tarka-hosted stack see tarka/compose.yaml.
 services:
 
   livekit:
-    image: livekit/livekit-server:latest
-    command: --config /etc/livekit.yaml
+    image: livekit/livekit-server:v1.8.4
     environment:
-      - NODE_IP=${NODE_IP}
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          udp_port: 7882
+          use_external_ip: false
+        keys:
+          ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
+        logging:
+          level: info
     ports:
       - "7880:7880"
       - "7881:7881"
       - "7882:7882/udp"
-    volumes:
-      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
-    restart: unless-stopped
-
-  speaches:
-    build:
-      context: .
-      dockerfile: speaches/Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      WHISPER_MODEL: ${WHISPER_MODEL}
-      ENABLE_UI: "false"
-      PRELOAD_MODELS: '["Systran/faster-whisper-medium"]'
-      WHISPER__TTL: "-1"
-    volumes:
-      - hf-cache:/root/.cache/huggingface
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    restart: unless-stopped
-
-  kokoro:
-    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest
-    ports:
-      - "8880:8880"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     restart: unless-stopped
 
   rag-service:
@@ -59,15 +32,10 @@ services:
       - TOP_K_RERANK=${TOP_K_RERANK}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_PUBLIC_URL=${LIVEKIT_PUBLIC_URL:-}
     volumes:
       - ./rag-service/storage:/app/storage
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+      - hf-cache:/root/.cache/huggingface
     restart: unless-stopped
     depends_on:
       - livekit
@@ -87,25 +55,19 @@ services:
       - LIVEKIT_URL=ws://livekit:7880
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
-      - LLAMA_CPP_BASE_URL=${LLAMA_CPP_BASE_URL}
       - RAG_SERVICE_URL=${RAG_SERVICE_URL}
-      - KOKORO_BASE_URL=${KOKORO_BASE_URL}
+      - TARKA_BASE_URL=${TARKA_BASE_URL}
+      - TARKA_API_KEY=${TARKA_API_KEY}
+      - LLM_MODEL=${LLM_MODEL}
+      - STT_MODEL=${STT_MODEL}
+      - STT_LANGUAGE=${STT_LANGUAGE}
+      - TTS_MODEL=${TTS_MODEL}
+      - TTS_VOICE=${TTS_VOICE}
       - AGENT_NAME=${AGENT_NAME}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     restart: unless-stopped
     depends_on:
       - livekit
-      - speaches
-      - kokoro
       - rag-service
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
 volumes:
   hf-cache:

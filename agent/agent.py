@@ -14,9 +14,17 @@ LIVEKIT_URL = os.environ["LIVEKIT_URL"]
 LIVEKIT_API_KEY = os.environ["LIVEKIT_API_KEY"]
 LIVEKIT_API_SECRET = os.environ["LIVEKIT_API_SECRET"]
 
-LLAMA_CPP_BASE_URL = os.environ["LLAMA_CPP_BASE_URL"]
 RAG_SERVICE_URL = os.environ["RAG_SERVICE_URL"]
-KOKORO_BASE_URL = os.environ["KOKORO_BASE_URL"]
+
+# Tarka model API. Inside a Tarka host, http://tarka/v1 needs no key;
+# outside one, use https://tarka.rest/v1 with a key that has the utilities scope.
+TARKA_BASE_URL = os.environ.get("TARKA_BASE_URL", "http://tarka/v1")
+TARKA_API_KEY = os.environ.get("TARKA_API_KEY") or "not-required"
+LLM_MODEL = os.environ.get("LLM_MODEL", "qwen3.8-flash-next")
+STT_MODEL = os.environ.get("STT_MODEL", "whisper-large-v3")
+STT_LANGUAGE = os.environ.get("STT_LANGUAGE", "en")
+TTS_MODEL = os.environ.get("TTS_MODEL", "kokoro")
+TTS_VOICE = os.environ.get("TTS_VOICE", "af_heart")
 AGENT_NAME = os.environ.get("AGENT_NAME", "rag-assistant")
 
 SYSTEM_PROMPT = """You are a helpful voice assistant. You answer questions based on documents 
@@ -92,28 +100,28 @@ async def session_handler(ctx: agents.JobContext):
     logger.info(f"New session in room: {ctx.room.name}")
 
     stt = lk_openai.STT(
-        base_url="http://speaches:8000/v1",
-        api_key="not-required",
-        model="Systran/faster-whisper-medium",
-        language="en",
+        base_url=TARKA_BASE_URL,
+        api_key=TARKA_API_KEY,
+        model=STT_MODEL,
+        language=STT_LANGUAGE,
     )
-    logger.info("STT initialized with Systran/faster-whisper-medium")
+    logger.info(f"STT initialized with {STT_MODEL} at {TARKA_BASE_URL}")
 
     llm_model = lk_openai.LLM(
-        base_url=LLAMA_CPP_BASE_URL,
-        api_key="not-required",
-        model="gemma",
+        base_url=TARKA_BASE_URL,
+        api_key=TARKA_API_KEY,
+        model=LLM_MODEL,
     )
-    logger.info(f"LLM initialized with llama.cpp at {LLAMA_CPP_BASE_URL}")
+    logger.info(f"LLM initialized with {LLM_MODEL} at {TARKA_BASE_URL}")
 
     tts = lk_openai.TTS(
-        base_url=KOKORO_BASE_URL,
-        api_key="not-required",
-        model="tts-1",
-        voice="af_sky",
+        base_url=TARKA_BASE_URL,
+        api_key=TARKA_API_KEY,
+        model=TTS_MODEL,
+        voice=TTS_VOICE,
         response_format="pcm",
     )
-    logger.info(f"TTS initialized with Kokoro at {KOKORO_BASE_URL}")
+    logger.info(f"TTS initialized with {TTS_MODEL}/{TTS_VOICE} at {TARKA_BASE_URL}")
 
     vad = silero.VAD.load()
 

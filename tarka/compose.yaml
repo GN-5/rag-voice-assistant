@@ -1,0 +1,84 @@
+# Tarka Hosted Agents stack (custom Compose).
+# Images are built by .github/workflows/images.yml; Tarka does not run `build:`.
+# Required host variables: LIVEKIT_API_KEY, LIVEKIT_API_SECRET (secret), IMAGE_TAG.
+
+x-tarka:
+  routes:
+    - service: rag-service
+      port: 8100
+      path: /
+    - service: livekit
+      port: 7880
+      path: /rtc
+  volume_sizes:
+    rag-storage: 10Gi
+    hf-cache: 5Gi
+
+services:
+
+  # NOTE: only signaling works here. Tarka routes are HTTPS-only, so WebRTC media
+  # (7881/tcp, 7882/udp) can't reach this container. Point LIVEKIT_PUBLIC_URL
+  # at an external LiveKit server and drop this service once that's decided.
+  livekit:
+    image: livekit/livekit-server:v1.8.4
+    environment:
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          udp_port: 7882
+          use_external_ip: false
+        keys:
+          ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
+        logging:
+          level: info
+    expose:
+      - "7880"
+
+  rag-service:
+    image: ghcr.io/gn-5/rag-voice-assistant-rag-service:${IMAGE_TAG}
+    environment:
+      EMBEDDING_MODEL: BAAI/bge-small-en-v1.5
+      RERANKER_MODEL: BAAI/bge-reranker-base
+      TOP_K_RETRIEVE: "20"
+      TOP_K_RERANK: "5"
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_PUBLIC_URL: ${LIVEKIT_PUBLIC_URL:-}
+    expose:
+      - "8100"
+    volumes:
+      - rag-storage:/app/storage
+      - hf-cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    depends_on:
+      - livekit
+
+  agent:
+    image: ghcr.io/gn-5/rag-voice-assistant-agent:${IMAGE_TAG}
+    environment:
+      LIVEKIT_URL: ${LIVEKIT_SERVER_URL:-ws://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      RAG_SERVICE_URL: http://rag-service:8100
+      TARKA_BASE_URL: http://tarka/v1
+      LLM_MODEL: qwen3.8-flash-next
+      STT_MODEL: whisper-large-v3
+      STT_LANGUAGE: en
+      TTS_MODEL: kokoro
+      TTS_VOICE: af_heart
+      AGENT_NAME: rag-assistant
+    depends_on:
+      livekit:
+        condition: service_started
+      rag-service:
+        condition: service_healthy
+
+volumes:
+  rag-storage:
+  hf-cache:

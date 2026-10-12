@@ -40,6 +40,8 @@ indexing_lock = asyncio.Lock()
 
 LIVEKIT_API_KEY = os.environ["LIVEKIT_API_KEY"]
 LIVEKIT_API_SECRET = os.environ["LIVEKIT_API_SECRET"]
+# Public wss:// URL the browser connects to; empty means same origin as the page
+LIVEKIT_PUBLIC_URL = os.environ.get("LIVEKIT_PUBLIC_URL", "")
 
 
 @asynccontextmanager
@@ -175,7 +177,7 @@ async def get_livekit_token():
             room_join=True,
             room="demo-room",
         ))
-    return {"token": token.to_jwt()}
+    return {"token": token.to_jwt(), "url": LIVEKIT_PUBLIC_URL}
 
 
 def load_metadata() -> dict:
