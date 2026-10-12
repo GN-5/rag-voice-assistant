@@ -1,6 +1,7 @@
 # Tarka Hosted Agents stack (custom Compose).
 # Images are built by .github/workflows/images.yml; Tarka does not run `build:`.
-# Required host variables: LIVEKIT_API_KEY, LIVEKIT_API_SECRET (secret), IMAGE_TAG.
+# Required host variables: LIVEKIT_API_KEY, LIVEKIT_API_SECRET (secret).
+# Image tags are literal: Tarka validates image references before interpolation.
 
 x-tarka:
   routes:
@@ -36,7 +37,7 @@ services:
       - "7880"
 
   rag-service:
-    image: ghcr.io/gn-5/rag-voice-assistant-rag-service:${IMAGE_TAG}
+    image: ghcr.io/gn-5/rag-voice-assistant-rag-service:v0.1.0
     environment:
       EMBEDDING_MODEL: BAAI/bge-small-en-v1.5
       RERANKER_MODEL: BAAI/bge-reranker-base
@@ -60,7 +61,7 @@ services:
       - livekit
 
   agent:
-    image: ghcr.io/gn-5/rag-voice-assistant-agent:${IMAGE_TAG}
+    image: ghcr.io/gn-5/rag-voice-assistant-agent:v0.1.0
     environment:
       LIVEKIT_URL: ${LIVEKIT_SERVER_URL:-ws://livekit:7880}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}

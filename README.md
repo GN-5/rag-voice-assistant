@@ -29,8 +29,10 @@ Browser  ←WebRTC→  LiveKit (media router)
 2. In the Tarka console (Compute → Hosted Agents), create a custom Compose host from
    `tarka/compose.yaml`, with `qwen3.8-flash-next` plus the `whisper-large-v3` and `kokoro` utilities selected.
 3. Add GHCR credentials (GitHub username + classic PAT with `read:packages`) if the packages are private.
-4. Set variables: `IMAGE_TAG`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (secret), and optionally
+4. Set variables: `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (secret), and optionally
    `LIVEKIT_PUBLIC_URL` / `LIVEKIT_SERVER_URL` for an external LiveKit server.
+5. To ship a new version, push a `v*` tag, then bump the two `ghcr.io/...:<tag>` lines in
+   `tarka/compose.yaml` and reapply (Tarka does not interpolate variables in `image:`).
 
 > **Known limitation:** Tarka only exposes HTTPS routes, so the in-stack LiveKit can do signaling
 > but not WebRTC media (UDP/TCP). Voice sessions need an externally reachable LiveKit server.
