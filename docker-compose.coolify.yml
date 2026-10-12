@@ -1,0 +1,80 @@
+# Coolify deployment. Coolify builds the images from this repo and Traefik
+# terminates HTTPS. STT/TTS/LLM come from Tarka's public API.
+#
+# Set in Coolify (Domains, per service):
+#   rag-service -> https://<app-domain>:8100
+#   livekit     -> https://<livekit-domain>:7880
+# Open on the server firewall: 7881/tcp and 7882/udp (WebRTC media).
+
+services:
+
+  livekit:
+    image: livekit/livekit-server:v1.8.4
+    environment:
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          udp_port: 7882
+          use_external_ip: true
+        keys:
+          ${LIVEKIT_API_KEY:?}: ${LIVEKIT_API_SECRET:?}
+        logging:
+          level: info
+    expose:
+      - "7880"
+    ports:
+      - "7881:7881"
+      - "7882:7882/udp"
+    restart: unless-stopped
+
+  rag-service:
+    build: ./rag-service
+    environment:
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      RERANKER_MODEL: ${RERANKER_MODEL:-BAAI/bge-reranker-base}
+      TOP_K_RETRIEVE: ${TOP_K_RETRIEVE:-20}
+      TOP_K_RERANK: ${TOP_K_RERANK:-5}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?}
+      LIVEKIT_PUBLIC_URL: ${LIVEKIT_PUBLIC_URL:?}
+    expose:
+      - "8100"
+    volumes:
+      - rag-storage:/app/storage
+      - hf-cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    depends_on:
+      - livekit
+
+  agent:
+    build: ./agent
+    environment:
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?}
+      RAG_SERVICE_URL: http://rag-service:8100
+      TARKA_BASE_URL: https://tarka.rest/v1
+      TARKA_API_KEY: ${TARKA_API_KEY:?}
+      LLM_MODEL: ${LLM_MODEL:-qwen3.8-flash-next}
+      STT_MODEL: ${STT_MODEL:-whisper-large-v3}
+      STT_LANGUAGE: ${STT_LANGUAGE:-en}
+      TTS_MODEL: ${TTS_MODEL:-kokoro}
+      TTS_VOICE: ${TTS_VOICE:-af_heart}
+      AGENT_NAME: rag-assistant
+    restart: unless-stopped
+    depends_on:
+      livekit:
+        condition: service_started
+      rag-service:
+        condition: service_healthy
+
+volumes:
+  rag-storage:
+  hf-cache:

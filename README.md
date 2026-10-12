@@ -37,6 +37,16 @@ Browser  ←WebRTC→  LiveKit (media router)
 > **Known limitation:** Tarka only exposes HTTPS routes, so the in-stack LiveKit can do signaling
 > but not WebRTC media (UDP/TCP). Voice sessions need an externally reachable LiveKit server.
 
+## Deploying to Coolify
+
+`docker-compose.coolify.yml` builds from this repo; Traefik handles HTTPS and STT/TTS/LLM
+use Tarka's public API (`TARKA_API_KEY`, utilities scope + LLM access).
+
+1. New resource → Docker Compose from this repo, branch `coolify`, compose file `/docker-compose.coolify.yml`.
+2. Domains: `rag-service` → `https://<app-domain>:8100`, `livekit` → `https://<livekit-domain>:7880`.
+3. Env: `TARKA_API_KEY`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_PUBLIC_URL=wss://<livekit-domain>`.
+4. Open 7881/tcp and 7882/udp on the server firewall for WebRTC media.
+
 ## Local Development
 
 ```bash
@@ -50,6 +60,7 @@ docker compose logs -f agent rag-service
 
 ```
 ├── docker-compose.yml     # local dev
+├── docker-compose.coolify.yml  # Coolify stack
 ├── tarka/compose.yaml     # Tarka Hosted Agents stack
 ├── .github/workflows/     # image builds → GHCR
 ├── .env.example
